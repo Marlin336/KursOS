@@ -55,6 +55,11 @@ namespace KursOS
             {
                 sInfo.AddValue("Users", users);
             }
+
+            public void GetObjectData(SerializationInfo sInfo, StreamingContext contextArg)
+            {
+                users = (List<Users>)sInfo.GetValue("Users", typeof(List<Users>));
+            }
         }
 
         public class UsersSerializer
