@@ -15,7 +15,7 @@ namespace KursOS
         List<Users> UsList = new List<Users>();
         List<Groups> GrList = new List<Groups>();
         Inode[] ilist;
-        SuperBlock SB = new SuperBlock();
+        byte[] bitmap;
         /*Суперблок*/
         [Serializable]
         public class SuperBlock : ISerializable
@@ -51,7 +51,7 @@ namespace KursOS
         }
 
         /*Битовая карта*/
-        //Будет представлена в виде массима байтов
+        //Будет представлена в виде массива байтов
         [Serializable]
         public class SerializableBitmap : ISerializable
         {
