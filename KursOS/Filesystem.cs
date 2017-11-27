@@ -51,9 +51,52 @@ namespace KursOS
         }
 
         /*Битовая карта*/
-        public class BitMap
+        //Будет представлена в виде массима байтов
+        [Serializable]
+        public class SerializableBitmap : ISerializable
         {
-            public byte[] map;
+            private List<Boolean> bitmap;
+
+            public List<Boolean> Bitmap
+            {
+                get { return bitmap; }
+                set { bitmap = value; }
+            }
+
+            public SerializableBitmap() { }
+
+            public SerializableBitmap(SerializationInfo sInfo, StreamingContext contextArg)
+            {
+                bitmap = (List<Boolean>)sInfo.GetValue("Bitmap", typeof(List<Boolean>));
+            }
+
+            public void GetObjectData(SerializationInfo sInfo, StreamingContext contextArg)
+            {
+                sInfo.AddValue("Bitmap", bitmap);
+            }
+        }
+
+        public class BitmapSerializer
+        {
+            public BitmapSerializer() { }
+
+            public void SerializeBitmap(string fileName, SerializableBitmap objToSerialize)
+            {
+                FileStream fstream = File.Open(fileName, FileMode.Create);
+                BinaryFormatter binform = new BinaryFormatter();
+                binform.Serialize(fstream, objToSerialize);
+                fstream.Close();
+            }
+
+            public SerializableBitmap DeserializeBitmap(string fileName)
+            {
+                SerializableBitmap objToSerialize = null;
+                FileStream fstream = File.Open(fileName, FileMode.Open);
+                BinaryFormatter binform = new BinaryFormatter();
+                objToSerialize = (SerializableBitmap)binform.Deserialize(fstream);
+                fstream.Close();
+                return objToSerialize;
+            }
         }
 
         /*Структура inode*/
@@ -113,6 +156,53 @@ namespace KursOS
             }
         }
 
+        [Serializable]
+        public class SerializableInode : ISerializable
+        {
+            private List<Inode> inodes;
+
+            public List<Inode> Inodes
+            {
+                get { return inodes; }
+                set { inodes = value; }
+            }
+
+            public SerializableInode() { }
+
+            public SerializableInode(SerializationInfo sInfo, StreamingContext contextArg)
+            {
+                inodes = (List<Inode>)sInfo.GetValue("Inodes", typeof(List<Inode>));
+            }
+
+            public void GetObjectData(SerializationInfo sInfo, StreamingContext contextArg)
+            {
+                sInfo.AddValue("Inodes", inodes);
+            }
+        }
+
+        public class InodeSerializer
+        {
+            public InodeSerializer() { }
+
+            public void SerializeInode(string fileName, SerializableInode objToSerialize)
+            {
+                FileStream fstream = File.Open(fileName, FileMode.Create);
+                BinaryFormatter binform = new BinaryFormatter();
+                binform.Serialize(fstream, objToSerialize);
+                fstream.Close();
+            }
+
+            public SerializableInode DeserializeInode(string fileName)
+            {
+                SerializableInode objToSerialize = null;
+                FileStream fstream = File.Open(fileName, FileMode.Open);
+                BinaryFormatter binform = new BinaryFormatter();
+                objToSerialize = (SerializableInode)binform.Deserialize(fstream);
+                fstream.Close();
+                return objToSerialize;
+            }
+        }
+
         /*Корневой каталог*/
         [Serializable]
         public class Root : ISerializable
@@ -167,7 +257,7 @@ namespace KursOS
         {
             public RootSerializer() { }
 
-            public void SerializableRoot(string fileName, SerializableRoot objToSerialize)
+            public void SerializeRoot(string fileName, SerializableRoot objToSerialize)
             {
                 FileStream fstream = File.Open(fileName, FileMode.Create);
                 BinaryFormatter binform = new BinaryFormatter();
