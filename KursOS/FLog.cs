@@ -51,7 +51,7 @@ namespace KursOS
                         if (Password == TBPass.Text)
                         {
                             reader.Close();
-                            MainWindow MW = new MainWindow(this);
+                            MainWindow MW = new MainWindow(this, TBLog.Text);
                             Visible = false;
                             TBPass.Clear();
                             MW.Show();//Вход выполнен

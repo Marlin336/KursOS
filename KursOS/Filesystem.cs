@@ -12,10 +12,6 @@ namespace KursOS
 
     public class Filesystem
     {
-        List<Users> UsList = new List<Users>();
-        List<Groups> GrList = new List<Groups>();
-        Inode[] ilist;
-        byte[] bitmap;
         /*Суперблок*/
         [Serializable]
         public class SuperBlock : ISerializable
@@ -104,7 +100,7 @@ namespace KursOS
         public class Inode : ISerializable
         {
             public ushort id_inode;
-            public ushort perm;
+            public byte perm;
             public byte flags;
             /*0x1  readonly
               0x2  invisible
@@ -118,7 +114,7 @@ namespace KursOS
             public DateTime chdate;
             public DateTime crdate;
 
-            public Inode(ushort ID_node, ushort Permissions, byte Flags, uint FileSz,
+            public Inode(ushort ID_node, byte Permissions, byte Flags, uint FileSz,
                 ushort UID, ushort GID, DateTime ChangeDate, DateTime CreateDate)
             {
                 id_inode = ID_node;
@@ -134,7 +130,7 @@ namespace KursOS
             public Inode(SerializationInfo sInfo, StreamingContext contextArg)
             {
                 id_inode = (ushort)sInfo.GetValue("id_inode", typeof(ushort));
-                perm = (ushort)sInfo.GetValue("perm", typeof(ushort));
+                perm = (byte)sInfo.GetValue("perm", typeof(byte));
                 flags = (byte)sInfo.GetValue("flags", typeof(byte));
                 fileSz = (uint)sInfo.GetValue("fileSz", typeof(uint));
                 uid = (ushort)sInfo.GetValue("uid", typeof(ushort));
