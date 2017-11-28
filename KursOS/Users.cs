@@ -10,7 +10,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 namespace KursOS
 {
     [Serializable]
-    class Users :ISerializable
+    public class Users :ISerializable
     {
         public ushort uid;
         public string login;
@@ -21,7 +21,7 @@ namespace KursOS
             uid = UID;
             login = Login;
             password = Password;
-            File.AppendAllText("../../UsrList.sys", "\r[" + Login + "]\r" + Password);
+            //File.AppendAllText("../../UsrList.sys", "[" + Login + "]\r" + Password + "\r");
         }
         
         public Users(SerializationInfo sInfo, StreamingContext contextArg)
