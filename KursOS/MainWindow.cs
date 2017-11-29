@@ -22,16 +22,17 @@ namespace KursOS
         public List<Filesystem.Root> roots = new List<Filesystem.Root>();
         ushort inode;
         FileStream file;
-        public string[] comand;
+        public string[] comand = new string[3];
         byte chmod = 4 | 8;
         public ushort curruser;
 
-        public Users AddUser(string Name, string Password)
+        public void AddUser(string Name, string Password)
         {
-            return new Users(GetID(Password+Name+Password), Name, Password);
+            UsList.Add(new Users(GetID(Password + Name + Password), Name, Password));
+            ResetUserFile();
         }
 
-        private ushort GetID(string str)
+        public ushort GetID(string str)
         {
             ushort id = 0;
             str = str.Substring(str.Length / 4);
@@ -39,12 +40,13 @@ namespace KursOS
                 id += c;
             return id;
         }
+
         public FLog LogForm;
         public MainWindow(FLog fl, string UserLogin)
         {
             LogForm = fl;
             InitializeComponent();
-            //Запись в список пользователей из файла
+            //Запись в List пользователей из файла
             #region
             string fileForUsers = File.ReadAllText("../../UsrList.sys");
             int j = 0;
@@ -64,7 +66,7 @@ namespace KursOS
                     pass += fileForUsers[j].ToString();
                     j++;
                 } while (fileForUsers[j] != '\r');
-                UsList.Add(AddUser(login, pass));
+                AddUser(login, pass);
                 j++;
             } while (j != fileForUsers.Length);
             foreach (Users user in UsList)
@@ -80,10 +82,18 @@ namespace KursOS
 
         private void BEnter_Click(object sender, EventArgs e)
         {
-            /*TBOut.Text += TBIn.Text + "\r\n";
-            TBIn.Clear();
-            TBIn.Focus();*/
-            TBOut.Text += DisplayUserList();
+            TBOut.Text += TBIn.Text + "\r\n";
+            int i = 0;
+            TBIn.Text = TBIn.Text + " ";
+            do
+            {
+                comand[i] = TBIn.Text.Substring(0, TBIn.Text.IndexOf(' '));
+                TBIn.Text = TBIn.Text.Remove(0, TBIn.Text.IndexOf(' ') + 1);
+                i++;
+            } while (TBIn.Text.Length != 0);
+            TBIn.Focus();
+            GetComand(comand[0]);
+            //TBOut.Text += DisplayUserList();
         }
 
         private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)
@@ -166,5 +176,47 @@ namespace KursOS
             root_ser.SerializeRoot("root.txt", obj_root);
         }
 
+        public bool GetComand(string cmd)
+        {
+            switch (cmd)
+            {
+                case "help":
+                    TBOut.Text += "nusr name pass - соззание пользователя с именем name и паролем pass\r"+
+                        "rmusr name pass - удалить пользователя с именем name и паролем pass\r"+
+                        "lsusr - вывести список пользователей"+
+                        "cp stpath finpath - копировать файл stpath в место finpath\r"+
+                        "rnm path new_name - переименовать файл path в new_name\r"+
+                        "crt file - создать файл с именем file"+
+                        "rm file - удалить файл file"+
+                        "pwd - узнать адрес текущей директории"+
+                        "ls - вывести список файлов в текущей директрии";
+                    return true;
+                case "nusr":
+                    AddUser(comand[1], comand[2]);
+                    break;
+                case "rmusr":
+                    DelUser(comand[1], comand[2]);
+                    break;
+                case "lsusr":
+                    break;
+                case "cp":
+                    break;
+                case "rnm":
+                    break;
+                case "crt":
+                    break;
+                case "rm":
+                    break;
+                case "pwd":
+                    break;
+                case "ls":
+                    break;
+                default:
+                    return false;
+            }
+            for (int i = 0; i < comand.Length; i++)
+                comand[i] = null;
+            return true;
+        }
     }
 }
