@@ -8,6 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using System.Windows.Forms;
+using System.Windows;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace KursOS
 {
@@ -18,10 +20,10 @@ namespace KursOS
         public List<Filesystem.Inode> ilist = new List<Filesystem.Inode>();
         public List<byte> bitmap = new List<byte>();
         public List<Filesystem.Root> roots = new List<Filesystem.Root>();
-        int inode;
+        ushort inode;
         FileStream file;
         public string[] comand;
-        bool[] chmod = { true, true, false, false };
+        byte chmod = 4 | 8;
         public ushort curruser;
 
         public Users AddUser(string Name, string Password)
@@ -37,7 +39,6 @@ namespace KursOS
                 id += c;
             return id;
         }
-
         public FLog LogForm;
         public MainWindow(FLog fl, string UserLogin)
         {
@@ -92,14 +93,19 @@ namespace KursOS
 
         public int DelUser(string UserName, string Pass)
         {
+            bool exflag = false;
             foreach (Users user in UsList)
             {
                 if (user.login == UserName)
                 {
                     if (user.password == Pass)
                     {   //Если совпали логин и пароль
+                        if (curruser == user.uid)
+                            exflag = true;
                         UsList.Remove(user);
                         ResetUserFile();
+                        if (exflag)
+                            Close();
                         return 1;
                     }
                     else
@@ -132,5 +138,33 @@ namespace KursOS
             }
             return context;
         }
+
+        private void Formating()
+        {
+            //форматируем суперблок
+            BinaryFormatter superblform = new BinaryFormatter();
+            FileStream file = new FileStream("SuperBlock.txt", FileMode.Create);
+            superblform.Serialize(file, Super);
+            file.Close();
+
+            //форматируем inode
+            Filesystem.SerializableInode obj_inode = new Filesystem.SerializableInode();
+            obj_inode.Inodes = ilist;
+            Filesystem.InodeSerializer inode_ser = new Filesystem.InodeSerializer();
+            inode_ser.SerializeInode("inodes.txt", obj_inode);
+
+            //форматируем bitmap
+            Filesystem.SerializableBitmap obj_bitmap = new Filesystem.SerializableBitmap();
+            obj_bitmap.Bitmap = bitmap;
+            Filesystem.BitmapSerializer bitmap_ser = new Filesystem.BitmapSerializer();
+            bitmap_ser.SerializeBitmap("bitmap.txt", obj_bitmap);
+
+            //заполнение к/к
+            Filesystem.SerializableRoot obj_root = new Filesystem.SerializableRoot();
+            obj_root.Roots = roots;
+            Filesystem.RootSerializer root_ser = new Filesystem.RootSerializer();
+            root_ser.SerializeRoot("root.txt", obj_root);
+        }
+
     }
 }

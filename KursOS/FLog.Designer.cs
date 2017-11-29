@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FLog));
             this.LLogin = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.TBLog = new System.Windows.Forms.TextBox();
@@ -113,10 +114,12 @@
             this.Controls.Add(this.TBLog);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.LLogin);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximumSize = new System.Drawing.Size(265, 200);
             this.MinimumSize = new System.Drawing.Size(265, 200);
             this.Name = "FLog";
             this.RightToLeft = System.Windows.Forms.RightToLeft.No;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Вход";
             this.ResumeLayout(false);
             this.PerformLayout();

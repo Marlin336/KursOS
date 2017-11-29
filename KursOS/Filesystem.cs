@@ -51,9 +51,9 @@ namespace KursOS
         [Serializable]
         public class SerializableBitmap : ISerializable
         {
-            private List<Boolean> bitmap;
+            private List<byte> bitmap;
 
-            public List<Boolean> Bitmap
+            public List<byte> Bitmap
             {
                 get { return bitmap; }
                 set { bitmap = value; }
@@ -63,7 +63,7 @@ namespace KursOS
 
             public SerializableBitmap(SerializationInfo sInfo, StreamingContext contextArg)
             {
-                bitmap = (List<Boolean>)sInfo.GetValue("Bitmap", typeof(List<Boolean>));
+                bitmap = (List<byte>)sInfo.GetValue("Bitmap", typeof(List<byte>));
             }
 
             public void GetObjectData(SerializationInfo sInfo, StreamingContext contextArg)
