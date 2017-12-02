@@ -113,9 +113,10 @@ namespace KursOS
             public ushort gid;
             public DateTime chdate;
             public DateTime crdate;
+            public byte[] clst = new byte[10]; // без косвенной адресации
 
             public Inode(ushort ID_node, byte Permissions, byte Flags, uint FileSz,
-                ushort UID, ushort GID, DateTime ChangeDate, DateTime CreateDate)
+                ushort UID, ushort GID, DateTime ChangeDate, DateTime CreateDate, byte[] clustnum)
             {
                 id_inode = ID_node;
                 perm = Permissions;
@@ -125,6 +126,7 @@ namespace KursOS
                 gid = GID;
                 chdate = ChangeDate;
                 crdate = CreateDate;
+                clst = clustnum;
             }
 
             public Inode(SerializationInfo sInfo, StreamingContext contextArg)
@@ -137,6 +139,7 @@ namespace KursOS
                 gid = (ushort)sInfo.GetValue("gid", typeof(ushort));
                 chdate = (DateTime)sInfo.GetValue("chdate", typeof(DateTime));
                 crdate = (DateTime)sInfo.GetValue("crdate", typeof(DateTime));
+                clst = (byte[])sInfo.GetValue("clst", typeof(byte[]));
             }
 
             public void GetObjectData(SerializationInfo sInfo, StreamingContext contextArg)

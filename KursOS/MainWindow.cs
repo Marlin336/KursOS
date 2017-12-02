@@ -22,37 +22,12 @@ namespace KursOS
         public List<Filesystem.Root> roots = new List<Filesystem.Root>();
         ushort inode;
         FileStream file;
+        byte[] byteArray;
         public string[] comand = new string[3];
         byte chmod = 4 | 8;
         public ushort curruser;
-
-        public void AddUser(string Name, string Password, bool ChngFile)
-        {
-            bool exept = false;
-            foreach (Users user in UsList)
-            {
-                if (Name == user.login)
-                {
-                    exept = true;
-                    break;
-                }
-            }
-            if (!exept)
-            {
-                UsList.Add(new Users(GetID(Password + Name + Password), Name, Password));
-                if (ChngFile)
-                    ResetUserFile();
-            }
-            else
-                TBOut.Text += "Пользователь с таким именем уже существует\r\n";
-        }
-
-        public ushort GetID(string str)
-        {
-            return (ushort)str.GetHashCode();
-        }
-
         public FLog LogForm;
+
         public MainWindow(FLog fl, string UserLogin)
         {
             LogForm = fl;
@@ -91,6 +66,11 @@ namespace KursOS
             #endregion
         }
 
+        private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            LogForm.Visible = true;
+        }
+
         private void BEnter_Click(object sender, EventArgs e)
         {
             TBOut.Text += TBIn.Text + "\r\n";
@@ -109,12 +89,33 @@ namespace KursOS
             TBOut.ScrollToCaret();
         }
 
-        private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)
+        private void AddUser(string Name, string Password, bool ChngFile)
         {
-            LogForm.Visible = true;
+            bool exept = false;
+            foreach (Users user in UsList)
+            {
+                if (Name == user.login)
+                {
+                    exept = true;
+                    break;
+                }
+            }
+            if (!exept)
+            {
+                UsList.Add(new Users(GetID(Password + Name), Name, Password));
+                if (ChngFile)
+                    ResetUserFile();
+            }
+            else
+                TBOut.Text += "Пользователь с таким именем уже существует\r\n";
         }
 
-        public int DelUser(string UserName, string Pass)
+        private ushort GetID(string str)
+        {
+            return (ushort)str.GetHashCode();
+        }
+
+        private int DelUser(string UserName, string Pass)
         {
             bool exflag = false;
             foreach (Users user in UsList)
@@ -189,7 +190,20 @@ namespace KursOS
             root_ser.SerializeRoot("root.txt", obj_root);
         }
 
-        public bool GetComand(string cmd)
+        private int CreateFile(string Context)
+        {
+            byteArray = Encoding.Default.GetBytes(Context);
+            file = new FileStream("Data.txt", FileMode.Open);
+
+            //Сколько кластеров нужно
+            ushort clustneed = 0;
+            if (byteArray.Length % Super.clustSz == 0)
+                clustneed = (ushort)(byteArray.Length / Super.clustSz);
+            else
+                clustneed = (ushort)(byteArray.Length / Super.clustSz + 1);
+        }
+
+        private bool GetComand(string cmd)
         {
             switch (cmd)
             {
@@ -212,7 +226,12 @@ namespace KursOS
                     break;
                 case "rmusr":
                     if (comand[1] != null && comand[2] != null)
-                        DelUser(comand[1], comand[2]);
+                    {
+                        int err = DelUser(comand[1], comand[2]);
+                        if (err == -1) TBOut.Text += "Неверный логин\r\n";
+                        else if (err == 0) TBOut.Text += "Неверный пароль\r\n";
+                        else if (err == 1) TBOut.Text += "Пользователь удален\r\n";
+                    }
                     else
                         TBOut.Text += "Введены не все параметры\r\n";
                     break;
