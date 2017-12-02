@@ -51,11 +51,13 @@
             this.TBOut.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.TBOut.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
             this.TBOut.Location = new System.Drawing.Point(12, 12);
             this.TBOut.MaxLength = 0;
             this.TBOut.Multiline = true;
             this.TBOut.Name = "TBOut";
             this.TBOut.ReadOnly = true;
+            this.TBOut.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.TBOut.Size = new System.Drawing.Size(645, 292);
             this.TBOut.TabIndex = 1;
             this.TBOut.TabStop = false;

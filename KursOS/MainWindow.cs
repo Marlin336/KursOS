@@ -26,19 +26,30 @@ namespace KursOS
         byte chmod = 4 | 8;
         public ushort curruser;
 
-        public void AddUser(string Name, string Password)
+        public void AddUser(string Name, string Password, bool ChngFile)
         {
-            UsList.Add(new Users(GetID(Password + Name + Password), Name, Password));
-            ResetUserFile();
+            bool exept = false;
+            foreach (Users user in UsList)
+            {
+                if (Name == user.login)
+                {
+                    exept = true;
+                    break;
+                }
+            }
+            if (!exept)
+            {
+                UsList.Add(new Users(GetID(Password + Name + Password), Name, Password));
+                if (ChngFile)
+                    ResetUserFile();
+            }
+            else
+                TBOut.Text += "Пользователь с таким именем уже существует\r\n";
         }
 
         public ushort GetID(string str)
         {
-            ushort id = 0;
-            str = str.Substring(str.Length / 4);
-            foreach (char c in str)
-                id += c;
-            return id;
+            return (ushort)str.GetHashCode();
         }
 
         public FLog LogForm;
@@ -66,7 +77,7 @@ namespace KursOS
                     pass += fileForUsers[j].ToString();
                     j++;
                 } while (fileForUsers[j] != '\r');
-                AddUser(login, pass);
+                AddUser(login, pass, false);
                 j++;
             } while (j != fileForUsers.Length);
             foreach (Users user in UsList)
@@ -92,8 +103,10 @@ namespace KursOS
                 i++;
             } while (TBIn.Text.Length != 0);
             TBIn.Focus();
-            GetComand(comand[0]);
-            //TBOut.Text += DisplayUserList();
+            if (!GetComand(comand[0]))
+                TBOut.Text += "Неверная команда\r\n";
+            TBOut.SelectionStart = TBOut.TextLength;
+            TBOut.ScrollToCaret();
         }
 
         private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)
@@ -181,23 +194,30 @@ namespace KursOS
             switch (cmd)
             {
                 case "help":
-                    TBOut.Text += "nusr name pass - соззание пользователя с именем name и паролем pass\r"+
-                        "rmusr name pass - удалить пользователя с именем name и паролем pass\r"+
-                        "lsusr - вывести список пользователей"+
-                        "cp stpath finpath - копировать файл stpath в место finpath\r"+
-                        "rnm path new_name - переименовать файл path в new_name\r"+
-                        "crt file - создать файл с именем file"+
-                        "rm file - удалить файл file"+
-                        "pwd - узнать адрес текущей директории"+
-                        "ls - вывести список файлов в текущей директрии";
+                    TBOut.Text += "nusr name pass - создание пользователя с именем name и паролем pass\r\n"+
+                        "rmusr name pass - удалить пользователя с именем name и паролем pass\r\n"+
+                        "lsusr - вывести список существующих пользователей\r\n"+
+                        "cp stpath finpath - копировать файл stpath в место finpath\r\n"+
+                        "rnm path new_name - переименовать файл path в new_name\r\n"+
+                        "crt file - создать файл с именем file\r\n"+
+                        "rm file - удалить файл file\r\n"+
+                        "pwd - узнать адрес текущей директории\r\n"+
+                        "ls - вывести список файлов в текущей директрии\r\n";
                     return true;
                 case "nusr":
-                    AddUser(comand[1], comand[2]);
+                    if (comand[1] != null && comand[2] != null)
+                        AddUser(comand[1], comand[2], true);
+                    else
+                        TBOut.Text += "Введены не все параметры\r\n";
                     break;
                 case "rmusr":
-                    DelUser(comand[1], comand[2]);
+                    if (comand[1] != null && comand[2] != null)
+                        DelUser(comand[1], comand[2]);
+                    else
+                        TBOut.Text += "Введены не все параметры\r\n";
                     break;
                 case "lsusr":
+                    TBOut.Text += DisplayUserList();
                     break;
                 case "cp":
                     break;
