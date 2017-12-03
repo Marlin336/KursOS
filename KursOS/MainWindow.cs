@@ -18,13 +18,13 @@ namespace KursOS
         public List<Users> UsList = new List<Users>();
         public Filesystem.SuperBlock Super = new Filesystem.SuperBlock();
         public List<Filesystem.Inode> ilist = new List<Filesystem.Inode>();
-        public List<byte> bitmap = new List<byte>();
+        public List<bool> bitmap = new List<bool>();
         public List<Filesystem.Root> roots = new List<Filesystem.Root>();
         ushort inode;
         FileStream file;
-        byte[] byteArray;
+        byte[] MassivByte;
         public string[] comand = new string[3];
-        byte chmod = 4 | 8;
+        byte chmod = 2 | 4 | 8;
         public ushort curruser;
         public FLog LogForm;
 
@@ -190,17 +190,303 @@ namespace KursOS
             root_ser.SerializeRoot("root.txt", obj_root);
         }
 
-        private int CreateFile(string Context)
+        private int CreateFile(string Context, byte permis)
         {
-            byteArray = Encoding.Default.GetBytes(Context);
+            MassivByte = Encoding.Default.GetBytes(Context);
             file = new FileStream("Data.txt", FileMode.Open);
-
+            int i, InodNumber = -1;
+            int Last = -1;
+            
             //Сколько кластеров нужно
             ushort clustneed = 0;
-            if (byteArray.Length % Super.clustSz == 0)
-                clustneed = (ushort)(byteArray.Length / Super.clustSz);
+            if (MassivByte.Length % Super.clustSz == 0)
+                clustneed = (ushort)(MassivByte.Length / Super.clustSz);
             else
-                clustneed = (ushort)(byteArray.Length / Super.clustSz + 1);
+                clustneed = (ushort)(MassivByte.Length / Super.clustSz + 1);
+            int m = clustneed;
+
+            //если < 10, то ищем свободный инод
+            if (clustneed <= 10)
+            {
+                foreach (Filesystem.Inode inode in ilist)
+                {
+                    if (inode.isfree == true)
+                    {
+                        InodNumber = inode.id_inode;
+                        inode.fileSz = (uint)Context.Length;
+                        inode.isfree = false;
+                        inode.uid = curruser;
+                        inode.crdate = DateTime.Now;
+                        inode.chdate = DateTime.Now;
+                        inode.perm = permis;
+                        Last = 0;
+
+                        break;
+                    }
+                }
+
+                if (Last == -1)
+                {
+                    file.Close();
+                    MessageBox.Show("Нет свободных дескрипторов", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return -1;
+                }
+
+                Last = -1;
+                int LengthMassive = MassivByte.Length;
+                int position = 0;
+                int bit = -1;
+                int clustSize = Super.clustSz;
+
+                for (i = 0; i < bitmap.Count; i++)
+                {
+                    if (bitmap[i] == false)
+                    {
+                        bit = i;
+                        bitmap[i] = true;
+                        break;
+                    }
+                }
+
+                ilist[InodNumber].clst[0] = (ushort)bit;
+                Last = i;
+
+                clustneed--;
+
+                file.Seek(i * Super.clustSz, SeekOrigin.Begin);
+                if (Super.clustSz < LengthMassive)
+                {
+                    file.Write(MassivByte, 0, Super.clustSz);
+                    LengthMassive -= Super.clustSz;
+                    position += Super.clustSz;
+                }
+                else
+                {
+                    file.Write(MassivByte, 0, LengthMassive);
+                }
+
+                if (Last == -1)
+                {
+                    file.Close();
+                    MessageBox.Show("Недостаточно места для записи файла", "Ошибка записи", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return -1;
+                }
+
+                if (clustneed > 0)
+                {
+                    int p = 1;
+                    for (i = 0; (i < bitmap.Count && clustneed != 0); i++)
+                    {
+                        if (bitmap[i] == false)
+                        {
+                            bitmap[i] = true;
+                            ilist[InodNumber].clst[p] = (ushort)i;
+                            p++;
+                            Last = i;
+                            clustneed--;
+                            file.Seek((i) * Super.clustSz, SeekOrigin.Begin);
+                            if (Super.clustSz < LengthMassive)
+                            {
+                                file.Write(MassivByte, position, Super.clustSz);
+                                LengthMassive -= Super.clustSz;
+                                position += Super.clustSz;
+                            }
+                            else
+                            {
+                                file.Write(MassivByte, position, LengthMassive);
+                            }
+                        }
+                    }
+                }
+                file.Close();
+                return InodNumber;
+            }
+            else
+            {
+                file.Close();
+                MessageBox.Show("Файл слишком большой", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return -1;
+            }
+        }
+
+        // Сохранить файл
+        private void save(int nodeNumber, string Context)
+        {
+            MassivByte = Encoding.Default.GetBytes(Context);
+            file = new FileStream("Data.txt", FileMode.Open);
+            ilist[nodeNumber].fileSz = (ushort)Context.Length;
+            ilist[nodeNumber].chdate = DateTime.Now;
+
+            //смотрим, сколько нужно всего кластеров
+            int WaitCountClasters = 0;
+            if (MassivByte.Length % Super.clustSz == 0)
+                WaitCountClasters = MassivByte.Length / Super.clustSz;
+            else
+                WaitCountClasters = MassivByte.Length / Super.clustSz + 1;
+
+            //если < 10 - ищем свободный инод
+            if (WaitCountClasters <= 10)
+            {
+                int er = 0;
+                for (int j = 0; j < 10; j++)
+                {
+                    if (ilist[nodeNumber].clst[j] != -1)
+                        er++;
+                }
+                if (WaitCountClasters == er)
+                {
+                    int LengthMassive = MassivByte.Length;
+                    int position = 0;
+                    int clasterSize = Super.clustSz;
+                    for (int p = 0; p < er; p++)
+                    {
+                        file.Seek(ilist[nodeNumber].clst[p] * Super.clustSz, SeekOrigin.Begin);
+                        if (Super.clustSz < LengthMassive)
+                        {
+                            file.Write(MassivByte, 0, Super.clustSz);
+                            LengthMassive -= Super.clustSz;
+                            position += Super.clustSz;
+                        }
+                        else
+                        {
+                            file.Write(MassivByte, position, LengthMassive);
+                        }
+                    }
+                }
+
+                if ((WaitCountClasters <= er) || (WaitCountClasters >= er))
+                {
+                    for (int j = 0; j < 10; j++)
+                    {
+                        if (ilist[nodeNumber].clst[j] != -1)
+                            bitmap[ilist[nodeNumber].clst[j]] = false;
+                        ilist[nodeNumber].clst[j] = -1;
+                        er++;
+                    }
+                    int Last = -1, i = 0;
+                    int LengthMassive = MassivByte.Length;
+                    int position = 0;
+                    int bit = -1;
+                    int clasterSize = Super.clustSz;
+
+                    for (i = 0; i < bitmap.Count; i++)
+                    {
+                        if (bitmap[i] == false)
+                        {
+                            bit = i;
+                            bitmap[i] = true;
+                            break;
+                        }
+                    }
+
+                    ilist[nodeNumber].clst[0] = bit;
+                    Last = i;
+
+                    WaitCountClasters--;
+
+                    file.Seek(i * Super.clustSz, SeekOrigin.Begin);
+                    if (Super.clustSz < LengthMassive)
+                    {
+                        file.Write(MassivByte, 0, Super.clustSz);
+                        LengthMassive -= Super.clustSz;
+                        position += Super.clustSz;
+                    }
+                    else
+                    {
+                        file.Write(MassivByte, 0, LengthMassive);
+                    }
+
+                    if (WaitCountClasters > 0)
+                    {
+                        int p = 1;
+                        for (i = 0; (i < bitmap.Count && WaitCountClasters != 0); i++)
+                        {
+                            if (bitmap[i] == false)
+                            {
+                                bitmap[i] = true;
+                                ilist[nodeNumber].clst[p] = i;
+                                p++;
+                                Last = i;
+                                WaitCountClasters--;
+                                file.Seek((i) * Super.clustSz, SeekOrigin.Begin);
+                                if (Super.clustSz < LengthMassive)
+                                {
+                                    file.Write(MassivByte, position, Super.clustSz);
+                                    LengthMassive -= Super.clustSz;
+                                    position += Super.clustSz;
+                                }
+                                else
+                                {
+                                    file.Write(MassivByte, position, LengthMassive);
+                                }
+                            }
+                        }
+                    }
+                }
+                file.Close();
+            }
+            else
+            {
+                file.Close();
+                MessageBox.Show("Файл слишком большой", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        public void newfile(string Name, string Text, byte permlist)
+        {
+
+            if (Name == "" || Name.Length > 14)
+            {
+                MessageBox.Show("Имя файла должно быть от 1 до 14 символов.");
+            }
+
+            else
+            {
+                int p1 = -1;
+                foreach (Filesystem.Root root in roots)
+                {
+                    if (root.name == Name)
+                    {
+                        p1 = 1;
+                        break;
+                    }
+                }
+                if (p1 == -1)
+                {
+
+                    int InodNumber = CreateFile(Text, permlist);
+                    if (InodNumber != -1)
+                    {
+
+                        foreach (Filesystem.Root p in roots)
+                        {
+                            if (p.name == "^^^^^^^^^^^^^^")
+                            {
+                                roots.Remove(p);
+                                break;
+                            }
+                        }
+                        {
+                            Filesystem.Root TestRoot = new Filesystem.Root(Name, InodNumber);
+                            roots.Add(TestRoot);
+                            MessageBox.Show("Файл создан");
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Создано максимальное количество файлов");
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Файл уже существует");
+                }
+            }
+        }
+
+        private void AddFile(string filename, string text)
+        {
+            newfile(filename, text, chmod);
         }
 
         private bool GetComand(string cmd)
