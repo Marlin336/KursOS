@@ -21,9 +21,12 @@ namespace KursOS
             public uint clustCount;
             public ushort ilistSz;
             public ushort freeinodeSz;
-            public ushort freeClustCount;
+            public uint freeClustCount;
 
-            public SuperBlock() { }
+            public SuperBlock(int space)
+            {
+                freeClustCount = clustCount = (uint)(space / clustSz);
+            }
 
             public SuperBlock(SerializationInfo sInfo, StreamingContext contextArg)
             {
@@ -102,18 +105,17 @@ namespace KursOS
             public ushort id_inode;
             public byte perm;
             public byte flags;
+            /*0x1  invisible
+              0x2  directory*/
             public bool isfree = true;
-            /*0x1  readonly
-              0x2  invisible
-              0x4  system
-              0x8  vol mark
-              0x10 directory
-              0x20 archive*/
             public uint fileSz;
             public ushort uid;
             public DateTime chdate;
             public DateTime crdate;
             public int[] clst = new int[10]; // без косвенной адресации
+
+            public Inode()
+            {   }
 
             public Inode(ushort ID_node, byte Permissions, byte Flags, uint FileSz,
                 ushort UID, DateTime ChangeDate, DateTime CreateDate, int[] clustnum)
