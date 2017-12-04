@@ -27,6 +27,7 @@ namespace KursOS
         byte startperm = 2 | 4 | 8;
         public ushort curruser;
         public byte[,] clusters;
+        private string currdir;
 
 
         public FLog LogForm;
@@ -36,9 +37,10 @@ namespace KursOS
             for (int i = 0; i < Super.clustCount; i++)
             {
                 bitmap.Add(false);
-                ilist.Add(new Filesystem.Inode());
+                ilist.Add(new Filesystem.Inode((ushort)i));
             }
             clusters = new byte[Super.clustCount, Super.clustSz];
+            currdir = "\\";
             LogForm = fl;
             InitializeComponent();
             //Запись в List пользователей из файла
@@ -82,15 +84,30 @@ namespace KursOS
 
         private void BEnter_Click(object sender, EventArgs e)
         {
-            TBOut.Text += TBIn.Text + "\r\n";
             int i = 0;
             TBIn.Text = TBIn.Text + " ";
-            do
+            if (!TBIn.Text.StartsWith("crtfl"))
             {
-                comand[i] = TBIn.Text.Substring(0, TBIn.Text.IndexOf(' '));
-                TBIn.Text = TBIn.Text.Remove(0, TBIn.Text.IndexOf(' ') + 1);
-                i++;
-            } while (TBIn.Text.Length != 0);
+                TBOut.Text += TBIn.Text + "\r\n";
+                do
+                {
+                    comand[i] = TBIn.Text.Substring(0, TBIn.Text.IndexOf(' '));
+                    TBIn.Text = TBIn.Text.Remove(0, TBIn.Text.IndexOf(' ') + 1);
+                    i++;
+                } while (TBIn.Text.Length != 0);
+            }
+            else
+            {
+                do
+                {
+                    comand[i] = TBIn.Text.Substring(0, TBIn.Text.IndexOf(' '));
+                    TBIn.Text = TBIn.Text.Remove(0, TBIn.Text.IndexOf(' ') + 1);
+                    i++;
+                } while (i < 2);
+                comand[2] = TBIn.Text.Substring(0, TBIn.Text.Length - 1);
+                TBOut.Text += comand[0] + " " + comand[1] + "\r\n";
+                TBIn.Text = null;
+            }
             TBIn.Focus();
             if (!GetComand(comand[0]))
                 TBOut.Text += "Неверная команда\r\n";
@@ -201,6 +218,13 @@ namespace KursOS
 
         private int AddFile(string Name, string Text, byte flgs)
         {
+            foreach (Filesystem.Root root in roots)
+            {
+                if (root.name == Name)
+                {
+                    return -3;//Файл с таким именем существует
+                }
+            }
             MassivByte = Encoding.Default.GetBytes(Text);
             int clustneed = 0;
             int inodenum = 0;
@@ -280,309 +304,91 @@ namespace KursOS
                 return 1;
         }
 
-        /*private int CreateFile(string Context, byte permis, byte flags_state)
+        private int DelFile(string FileName)
         {
-            MassivByte = Encoding.Default.GetBytes(Context);
-            file = new FileStream("Data.txt", FileMode.Open);
-            int i, InodNumber = -1;
-            int Last = -1;
-            
-            //Сколько кластеров нужно
-            ushort clustneed = 0;
-            if (MassivByte.Length % Super.clustSz == 0)
-                clustneed = (ushort)(MassivByte.Length / Super.clustSz);
-            else
-                clustneed = (ushort)(MassivByte.Length / Super.clustSz + 1);
-            int m = clustneed;
-
-            //если < 10, то ищем свободный инод
-            if (clustneed <= 10)
+            int targroot = -1;
+            for (int i = 0; i < roots.Count; i++)
             {
-                foreach (Filesystem.Inode inode in ilist)
+                if (roots[i].name == FileName)
                 {
-                    if (inode.isfree == true)
-                    {
-                        InodNumber = inode.id_inode;
-                        inode.fileSz = (uint)Context.Length;
-                        inode.isfree = false;
-                        inode.uid = curruser;
-                        inode.crdate = DateTime.Now;
-                        inode.chdate = DateTime.Now;
-                        inode.perm = permis;
-                        inode.flags = flags_state;
-                        Last = 0;
-                        break;
-                    }
+                    targroot = i;
+                    break;
                 }
-
-                if (Last == -1)
-                {
-                    file.Close();
-                    MessageBox.Show("Нет свободных дескрипторов", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return -1;
-                }
-
-                Last = -1;
-                int LengthMassive = MassivByte.Length;
-                int position = 0;
-                int bit = -1;
-                int clustSize = Super.clustSz;
-
-                for (i = 0; i < bitmap.Count; i++)
-                {
-                    if (bitmap[i] == false)
-                    {
-                        bit = i;
-                        bitmap[i] = true;
-                        break;
-                    }
-                }
-
-                ilist[InodNumber].clst[0] = (ushort)bit;
-                Last = i;
-
-                clustneed--;
-
-                file.Seek(i * Super.clustSz, SeekOrigin.Begin);
-                if (Super.clustSz < LengthMassive)
-                {
-                    file.Write(MassivByte, 0, Super.clustSz);
-                    LengthMassive -= Super.clustSz;
-                    position += Super.clustSz;
-                }
-                else
-                {
-                    file.Write(MassivByte, 0, LengthMassive);
-                }
-
-                if (Last == -1)
-                {
-                    file.Close();
-                    MessageBox.Show("Недостаточно места для записи файла", "Ошибка записи", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return -1;
-                }
-
-                if (clustneed > 0)
-                {
-                    int p = 1;
-                    for (i = 0; (i < bitmap.Count && clustneed != 0); i++)
-                    {
-                        if (bitmap[i] == false)
-                        {
-                            bitmap[i] = true;
-                            ilist[InodNumber].clst[p] = (ushort)i;
-                            p++;
-                            Last = i;
-                            clustneed--;
-                            file.Seek((i) * Super.clustSz, SeekOrigin.Begin);
-                            if (Super.clustSz < LengthMassive)
-                            {
-                                file.Write(MassivByte, position, Super.clustSz);
-                                LengthMassive -= Super.clustSz;
-                                position += Super.clustSz;
-                            }
-                            else
-                            {
-                                file.Write(MassivByte, position, LengthMassive);
-                            }
-                        }
-                    }
-                }
-                file.Close();
-                return InodNumber;
             }
-            else
-            {
-                file.Close();
-                MessageBox.Show("Файл слишком большой", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            if (targroot == -1)//Файл с именем FileName не найден
                 return -1;
+
+            int[] MassivCluster = ilist[roots[targroot].idinode].clst;
+            int lastclust = 0;
+            for (int i = 0; i < MassivCluster.Length; i++)
+            {
+                if (MassivCluster[i] == -1)
+                {
+                    lastclust = i - 1;
+                    break;
+                }
             }
+            for (int i = 0; i <= lastclust; i++)
+            {
+                for (int j = 0; j < Super.clustSz; j++)
+                {
+                    clusters[MassivCluster[i], j] = 0; //Очистка занятых файлом кластеров
+                }
+                bitmap[MassivCluster[i]] = false;
+            }
+            ushort currid = ilist[roots[targroot].idinode].id_inode;
+            ilist[roots[targroot].idinode] = new Filesystem.Inode(currid);
+            Super.freeClustCount++;
+
+            return 0;
         }
 
-        // Сохранить файл
-        private void SaveFile(int nodeNumber, string Context)
+        private int OpenFile(string FileName)
         {
-            MassivByte = Encoding.Default.GetBytes(Context);
-            file = new FileStream("Data.txt", FileMode.Open);
-            ilist[nodeNumber].fileSz = (ushort)Context.Length;
-            ilist[nodeNumber].chdate = DateTime.Now;
-
-            //смотрим, сколько нужно всего кластеров
-            int WaitCountClasters = 0;
-            if (MassivByte.Length % Super.clustSz == 0)
-                WaitCountClasters = MassivByte.Length / Super.clustSz;
-            else
-                WaitCountClasters = MassivByte.Length / Super.clustSz + 1;
-
-            //если < 10 - ищем свободный инод
-            if (WaitCountClasters <= 10)
+            int targroot = -1;
+            foreach (Filesystem.Root root in roots)
             {
-                int er = 0;
-                for (int j = 0; j < 10; j++)
+                if (root.name == FileName)
                 {
-                    if (ilist[nodeNumber].clst[j] != -1)
-                        er++;
+                    targroot = root.idinode;
+                    break;
                 }
-                if (WaitCountClasters == er)
-                {
-                    int LengthMassive = MassivByte.Length;
-                    int position = 0;
-                    int clasterSize = Super.clustSz;
-                    for (int p = 0; p < er; p++)
-                    {
-                        file.Seek(ilist[nodeNumber].clst[p] * Super.clustSz, SeekOrigin.Begin);
-                        if (Super.clustSz < LengthMassive)
-                        {
-                            file.Write(MassivByte, 0, Super.clustSz);
-                            LengthMassive -= Super.clustSz;
-                            position += Super.clustSz;
-                        }
-                        else
-                        {
-                            file.Write(MassivByte, position, LengthMassive);
-                        }
-                    }
-                }
+            }
+            if (targroot == -1)//Файл не найден
+                return -1;
 
-                if ((WaitCountClasters <= er) || (WaitCountClasters >= er))
-                {
-                    for (int j = 0; j < 10; j++)
-                    {
-                        if (ilist[nodeNumber].clst[j] != -1)
-                            bitmap[ilist[nodeNumber].clst[j]] = false;
-                        ilist[nodeNumber].clst[j] = -1;
-                        er++;
-                    }
-                    int Last = -1, i = 0;
-                    int LengthMassive = MassivByte.Length;
-                    int position = 0;
-                    int bit = -1;
-                    int clasterSize = Super.clustSz;
-
-                    for (i = 0; i < bitmap.Count; i++)
-                    {
-                        if (bitmap[i] == false)
-                        {
-                            bit = i;
-                            bitmap[i] = true;
-                            break;
-                        }
-                    }
-
-                    ilist[nodeNumber].clst[0] = bit;
-                    Last = i;
-
-                    WaitCountClasters--;
-
-                    file.Seek(i * Super.clustSz, SeekOrigin.Begin);
-                    if (Super.clustSz < LengthMassive)
-                    {
-                        file.Write(MassivByte, 0, Super.clustSz);
-                        LengthMassive -= Super.clustSz;
-                        position += Super.clustSz;
-                    }
-                    else
-                    {
-                        file.Write(MassivByte, 0, LengthMassive);
-                    }
-
-                    if (WaitCountClasters > 0)
-                    {
-                        int p = 1;
-                        for (i = 0; (i < bitmap.Count && WaitCountClasters != 0); i++)
-                        {
-                            if (bitmap[i] == false)
-                            {
-                                bitmap[i] = true;
-                                ilist[nodeNumber].clst[p] = i;
-                                p++;
-                                Last = i;
-                                WaitCountClasters--;
-                                file.Seek((i) * Super.clustSz, SeekOrigin.Begin);
-                                if (Super.clustSz < LengthMassive)
-                                {
-                                    file.Write(MassivByte, position, Super.clustSz);
-                                    LengthMassive -= Super.clustSz;
-                                    position += Super.clustSz;
-                                }
-                                else
-                                {
-                                    file.Write(MassivByte, position, LengthMassive);
-                                }
-                            }
-                        }
-                    }
-                }
-                file.Close();
+            if (curruser == ilist[roots[targroot].idinode].uid)
+            {
+                if ((ilist[roots[targroot].idinode].uid & 8) == 0) //У создателя нет прав на чтение
+                    return 1;
             }
             else
             {
-                file.Close();
-                MessageBox.Show("Файл слишком большой", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if ((ilist[roots[targroot].idinode].uid & 2) == 0) //У другого пользователя нет прав на чтение
+                    return 1;
             }
-        }
 
-        public void NewFile(string Name, string Text, byte permlist, byte flags)
-        {
-
-            if (Name == "" || Name.Length > 14)
+            int[] MassivCluster = ilist[roots[targroot].idinode].clst;
+            int lastclust = 0;
+            for (int i = 0; i < MassivCluster.Length; i++)
             {
-                MessageBox.Show("Имя файла должно быть от 1 до 14 символов.");
+                if (MassivCluster[i] == -1)
+                {
+                    lastclust = i - 1;
+                    break;
+                }
             }
-
-            else
+            string outtext = null; //Строка для вывода
+            for (int i = 0; i <= lastclust; i++)
             {
-                int p1 = -1;
-                foreach (Filesystem.Root root in roots)
+                for (int j = 0; (j < Super.clustSz && clusters[MassivCluster[i], j] != 0); j++)
                 {
-                    if (root.name == Name)
-                    {
-                        p1 = 1;
-                        break;
-                    }
-                }
-                if (p1 == -1)
-                {
-
-                    int InodNumber = CreateFile(Text, permlist, 16);
-                    if (InodNumber != -1)
-                    {
-
-                        foreach (Filesystem.Root p in roots)
-                        {
-                            if (p.name == "^^^^^^^^^^^^^^")
-                            {
-                                roots.Remove(p);
-                                break;
-                            }
-                        }
-                        {
-                            Filesystem.Root TestRoot = new Filesystem.Root(Name, InodNumber,);
-                            roots.Add(TestRoot);
-                            MessageBox.Show("Файл создан");
-                        }
-                    }
-                    else
-                    {
-                        MessageBox.Show("Создано максимальное количество файлов");
-                    }
-                }
-                else
-                {
-                    MessageBox.Show("Файл уже существует");
+                    outtext += (char)clusters[MassivCluster[i], j];
                 }
             }
-        }
-
-        private void AddFile(string filename, string text)
-        {
-            NewFile(filename, text, chmod, 0);
-        }
-
-        private void AddDir(string filename, string text)
-        {
-            NewFile(filename, text, chmod, 16);
-        }*/
+            TBOut.Text += outtext + "\r\n";
+            return 0;
+         }
 
         private bool GetComand(string cmd)
         {
@@ -597,10 +403,11 @@ namespace KursOS
                         "crtfl file text - создать файл с именем file и содержимым text\r\n"+
                         "crtdir name - создать папку с именем name\r\n" +
                         "rm file - удалить файл file\r\n" +
-                        "pwd - узнать адрес текущей директории\r\n"+
+                        "cat file - показать содержимое файла file\r\n" +
+                        "pwd - узнать адрес текущей директории\r\n" +
                         "ls - вывести список файлов в текущей директрии\r\n";
                     return true;
-                case "nusr":
+                case "addusr":
                     if (comand[1] != null && comand[2] != null)
                         AddUser(comand[1], comand[2], true);
                     else
@@ -635,7 +442,13 @@ namespace KursOS
                     break;
                 case "crtfl":
                     if (comand[1] != null && comand[2] != null)
-                        AddFile(comand[1], comand[2], 0);
+                    {
+                        int err = AddFile(comand[1], comand[2], 0);
+                        if (err == -1) TBOut.Text += "Не достаточно памяти для записи файла\r\n";
+                        else if (err == -2) TBOut.Text += "Файл слишком большой\r\n";
+                        else if (err == -3) TBOut.Text += "Файл с таким именем уже существует\r\n";
+                        else TBOut.Text += "Файл успешно создан\r\n";
+                    }
                     else
                         TBOut.Text += "Введены не все параметры\r\n";
                     break;
@@ -646,8 +459,27 @@ namespace KursOS
                         TBOut.Text += "Введены не все параметры\r\n";
                     break;
                 case "rm":
+                    if (comand[1] != null)
+                    {
+                        int err = DelFile(comand[1]);
+                        if (err == -1) TBOut.Text += "Файл с таким именем не найден\r\n";
+                        else if (err == 0) TBOut.Text += "Файл успешно удалён\r\n";
+                    }
+                    else
+                        TBOut.Text += "Введены не все параметры\r\n";
+                    break;
+                case "cat":
+                    if (comand[1] != null)
+                    {
+                        int err = OpenFile(comand[1]);
+                        if (err == -1) TBOut.Text += "Файл не найден\r\n";
+                        else if (err == 1) TBOut.Text += "У вас недостаточно прав для чтения этого файла\r\n";
+                    }
+                    else
+                        TBOut.Text += "Введены не все параметры\r\n";
                     break;
                 case "pwd":
+                    TBOut.Text += currdir + "\r\n";
                     break;
                 case "ls":
                     break;

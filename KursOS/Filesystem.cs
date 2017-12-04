@@ -17,7 +17,7 @@ namespace KursOS
         public class SuperBlock : ISerializable
         {
             private char[] FSName = { 'N', 'P', 'F', 'S' };
-            public ushort clustSz = 4096;
+            public ushort clustSz = 256;
             public uint clustCount;
             public ushort ilistSz;
             public ushort freeinodeSz;
@@ -112,10 +112,12 @@ namespace KursOS
             public ushort uid;
             public DateTime chdate;
             public DateTime crdate;
-            public int[] clst = new int[10]; // без косвенной адресации
+            public int[] clst = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }; // без косвенной адресации
 
-            public Inode()
-            {   }
+            public Inode(ushort ID)
+            {
+                id_inode = ID;
+            }
 
             public Inode(ushort ID_node, byte Permissions, byte Flags, uint FileSz,
                 ushort UID, DateTime ChangeDate, DateTime CreateDate, int[] clustnum)
