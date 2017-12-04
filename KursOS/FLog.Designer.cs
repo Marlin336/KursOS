@@ -41,7 +41,7 @@
             // 
             this.LLogin.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.LLogin.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.LLogin.Location = new System.Drawing.Point(-1, 1);
+            this.LLogin.Location = new System.Drawing.Point(3, 5);
             this.LLogin.Margin = new System.Windows.Forms.Padding(0);
             this.LLogin.Name = "LLogin";
             this.LLogin.Size = new System.Drawing.Size(251, 25);
@@ -53,7 +53,7 @@
             // 
             this.label2.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.label2.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.label2.Location = new System.Drawing.Point(3, 54);
+            this.label2.Location = new System.Drawing.Point(7, 58);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(247, 27);
             this.label2.TabIndex = 1;
@@ -64,7 +64,7 @@
             // 
             this.TBLog.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.TBLog.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.TBLog.Location = new System.Drawing.Point(52, 29);
+            this.TBLog.Location = new System.Drawing.Point(56, 33);
             this.TBLog.Name = "TBLog";
             this.TBLog.Size = new System.Drawing.Size(148, 23);
             this.TBLog.TabIndex = 0;
@@ -73,7 +73,7 @@
             // 
             this.TBPass.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.TBPass.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.TBPass.Location = new System.Drawing.Point(52, 84);
+            this.TBPass.Location = new System.Drawing.Point(56, 88);
             this.TBPass.Name = "TBPass";
             this.TBPass.PasswordChar = '*';
             this.TBPass.Size = new System.Drawing.Size(148, 23);
@@ -82,7 +82,7 @@
             // BOK
             // 
             this.BOK.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.BOK.Location = new System.Drawing.Point(12, 120);
+            this.BOK.Location = new System.Drawing.Point(12, 130);
             this.BOK.Name = "BOK";
             this.BOK.Size = new System.Drawing.Size(100, 30);
             this.BOK.TabIndex = 2;
@@ -93,7 +93,7 @@
             // BRem
             // 
             this.BRem.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.BRem.Location = new System.Drawing.Point(137, 119);
+            this.BRem.Location = new System.Drawing.Point(145, 130);
             this.BRem.Name = "BRem";
             this.BRem.Size = new System.Drawing.Size(100, 30);
             this.BRem.TabIndex = 5;
@@ -106,16 +106,16 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.AutoSize = true;
-            this.ClientSize = new System.Drawing.Size(249, 161);
+            this.ClientSize = new System.Drawing.Size(256, 169);
             this.Controls.Add(this.BRem);
             this.Controls.Add(this.BOK);
             this.Controls.Add(this.TBPass);
             this.Controls.Add(this.TBLog);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.LLogin);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.MaximumSize = new System.Drawing.Size(265, 200);
+            this.MaximumSize = new System.Drawing.Size(1000, 2000);
             this.MinimumSize = new System.Drawing.Size(265, 200);
             this.Name = "FLog";
             this.RightToLeft = System.Windows.Forms.RightToLeft.No;

@@ -17,7 +17,7 @@ namespace KursOS
         public class SuperBlock : ISerializable
         {
             private char[] FSName = { 'N', 'P', 'F', 'S' };
-            public ushort clustSz = 256;
+            public ushort clustSz = 2048;
             public uint clustCount;
             public ushort ilistSz;
             public ushort freeinodeSz;
@@ -104,7 +104,7 @@ namespace KursOS
         {
             public ushort id_inode;
             public byte perm;
-            public byte flags;
+            public byte flags = 0;
             /*0x1  invisible
               0x2  directory*/
             public bool isfree = true;
@@ -119,7 +119,7 @@ namespace KursOS
                 id_inode = ID;
             }
 
-            public Inode(ushort ID_node, byte Permissions, byte Flags, uint FileSz,
+            /*public Inode(ushort ID_node, byte Permissions, byte Flags, uint FileSz,
                 ushort UID, DateTime ChangeDate, DateTime CreateDate, int[] clustnum)
             {
                 id_inode = ID_node;
@@ -130,7 +130,7 @@ namespace KursOS
                 chdate = ChangeDate;
                 crdate = CreateDate;
                 clst = clustnum;
-            }
+            }*/
 
             public Inode(SerializationInfo sInfo, StreamingContext contextArg)
             {
@@ -155,6 +155,7 @@ namespace KursOS
                 sInfo.AddValue("uid", uid);
                 sInfo.AddValue("chdate", chdate);
                 sInfo.AddValue("crdate", crdate);
+                sInfo.AddValue("clst", clst);
             }
         }
 
@@ -211,6 +212,9 @@ namespace KursOS
         {
             public string name;
             public int idinode;
+
+            public Root()
+            { }
 
             public Root(string FileName, int IDinode)
             {
