@@ -20,8 +20,6 @@ namespace KursOS
         public List<Filesystem.Inode> ilist = new List<Filesystem.Inode>();
         public List<bool> bitmap = new List<bool>();
         public List<Filesystem.Root> roots = new List<Filesystem.Root>();
-        ushort inode;
-        FileStream file;
         byte[] MassivByte;
         public string[] comand = new string[3];
         byte startperm = 2 | 4 | 8;
@@ -33,15 +31,12 @@ namespace KursOS
 
         public MainWindow(FLog fl, string UserLogin)
         {
-            if (!Loading())
+            for (int i = 0; i < Super.clustCount; i++)
             {
-                for (int i = 0; i < Super.clustCount; i++)
-                {
-                    bitmap.Add(false);
-                    ilist.Add(new Filesystem.Inode((ushort)i));
-                }
-                clusters = new byte[Super.clustCount, Super.clustSz];
+                bitmap.Add(false);
+                ilist.Add(new Filesystem.Inode((ushort)i));
             }
+            clusters = new byte[Super.clustCount, Super.clustSz];
             currdir = "\\";
             LogForm = fl;
             InitializeComponent();
@@ -81,7 +76,6 @@ namespace KursOS
 
         private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)
         {
-            Formating();
             LogForm.Visible = true;
         }
 
@@ -335,21 +329,23 @@ namespace KursOS
 
         private int Append(string FileName, string text)//Не проверено!!!
         {
-            int targinodeid = -1;
+            int targinode = -1;
             foreach (Filesystem.Root root in roots)
             {
                 if (root.name == FileName)
                 {
-                    targinodeid = root.idinode;
+                    targinode = root.idinode;
                     break;
                 }
             }
-            if (targinodeid == -1)
+            if (targinode == -1)
                 return -1;//Файл не найден
-            int lastlclust = 9;
-            for (int i = 0; i < ilist[targinodeid].clst.Length; i++)
+            if (((ilist[roots[targinode].idinode].perm & 4) == 0 && curruser == ilist[roots[targinode].idinode].uid) || (curruser != ilist[roots[targinode].idinode].uid && (ilist[roots[targinode].idinode].perm & 1) == 0))
+                return -3; //Нет прав
+                int lastlclust = 9;
+            for (int i = 0; i < ilist[targinode].clst.Length; i++)
             {
-                if (ilist[targinodeid].clst[i] == -1)
+                if (ilist[targinode].clst[i] == -1)
                 {
                     lastlclust = i - 1;
                     break;
@@ -359,7 +355,7 @@ namespace KursOS
             int firstfreebyte = Super.clustSz;
             for (int i = 0; i < Super.clustSz; i++)
             {
-                if (clusters[ilist[targinodeid].clst[lastlclust], i] == 0)
+                if (clusters[ilist[targinode].clst[lastlclust], i] == 0)
                 {
                     firstfreebyte = i;
                     break;
@@ -368,7 +364,7 @@ namespace KursOS
             if (Super.clustSz - firstfreebyte >= MassivByte.Length)//Размер добавочной строки меньше или равно оставшемуся в кластере месту
             {
                 for (int i = 0; i < MassivByte.Length; i++)
-                    clusters[ilist[targinodeid].clst[lastlclust], firstfreebyte + i] = MassivByte[i];
+                    clusters[ilist[targinode].clst[lastlclust], firstfreebyte + i] = MassivByte[i];
                 return 0;
             }
             else//Если добавочная строка не поместиться в оставшееся в кластере место
@@ -376,7 +372,7 @@ namespace KursOS
                 int stopindex = 0;//Индекс байта в MassivByte, на котором остановились когда дозаполнили кластер
                 for (int i = 0; firstfreebyte + i < Super.clustSz; i++)
                 {
-                    clusters[ilist[targinodeid].clst[lastlclust], firstfreebyte + i] = MassivByte[i];
+                    clusters[ilist[targinode].clst[lastlclust], firstfreebyte + i] = MassivByte[i];
                     stopindex = i;
                 }//Дописали в кластер информации столько, сколько вместилось
                 int residual = MassivByte.Length - stopindex - 1;
@@ -385,7 +381,7 @@ namespace KursOS
                     clustcount = residual / Super.clustSz;
                 else
                     clustcount = residual / Super.clustSz + 1;
-                if (Super.freeClustCount >= clustcount && clustcount < ilist[targinodeid].clst.Length - lastlclust)
+                if (Super.freeClustCount >= clustcount && clustcount < ilist[targinode].clst.Length - lastlclust)
                 {
                     for (int i = lastlclust + 1; i < clustcount + lastlclust + 1; i++)//связываем кластеры с массивом инода и отмечаем как занятые в bitmap
                     {
@@ -393,21 +389,21 @@ namespace KursOS
                         {
                             if (!bitmap[j])
                             {
-                                ilist[targinodeid].clst[i] = j;
+                                ilist[targinode].clst[i] = j;
                                 bitmap[j] = true;
                                 break;
                             }
                         }
                     }
                     Super.freeClustCount -= (ushort)clustcount;//Уменьшаем счетчик свободных кластеров
-                    ilist[targinodeid].chdate = DateTime.Now;
+                    ilist[targinode].chdate = DateTime.Now;
                     //Дописываем оставшуюся информацию
                     int sym = stopindex + 1;
                     int clustnum = lastlclust+1;
                     int numerator = 0;
                     while (sym < MassivByte.Length) //запись информации в кластер
                     {
-                        clusters[ilist[targinodeid].clst[clustnum], numerator % Super.clustSz] = MassivByte[sym];
+                        clusters[ilist[targinode].clst[clustnum], numerator % Super.clustSz] = MassivByte[sym];
                         numerator++;
                         sym++;
                         if (numerator%Super.clustSz == 0 && numerator != 0)
@@ -434,8 +430,14 @@ namespace KursOS
             }
             if (with_old != -1)
             {
-                roots[with_old].name = new_name;
-                return 0;
+                if (((ilist[roots[with_old].idinode].perm & 4) != 0 && curruser == ilist[roots[with_old].idinode].uid) ^ (curruser != ilist[roots[with_old].idinode].uid && (ilist[roots[with_old].idinode].perm & 1) != 0))
+                {
+                    roots[with_old].name = new_name;
+                    ilist[roots[with_old].idinode].chdate = DateTime.Now;
+                    return 0;
+                }
+                else
+                    return -2;
             }
             else //Не найден файл с именем old_name
                 return 1;
@@ -561,9 +563,13 @@ namespace KursOS
 
             if (curruser == ilist[roots[targroot].idinode].uid)//Изменить права может только создатель файла
             {
-                int.TryParse(new_perm, out permtoint);
-                ilist[roots[targroot].idinode].perm = (byte)permtoint;
-                return 0;
+                if (int.TryParse(new_perm, out permtoint))
+                {
+                    ilist[roots[targroot].idinode].perm = (byte)permtoint;
+                    return 0;
+                }
+                else
+                    return -3; //Неверно задан параметр прав
             }
             else
                 return -2;//Попытка изменить права другим пользователем
@@ -613,6 +619,7 @@ namespace KursOS
                         int err = Append(comand[1], comand[2]);
                         if (err == -1) TBOut.Text += "Недостаточно памяти для записи файла\r\n";
                         else if (err == -2) TBOut.Text += "Файл слишком большой\r\n";
+                        else if (err == -3) TBOut.Text += "Не достаточно прав для записи в файл\r\n";
                         else TBOut.Text += "Файл успешно изменён\r\n";
                     }
                     else
@@ -627,6 +634,7 @@ namespace KursOS
                         if (err == -1) TBOut.Text += "Файл с именем " + comand[2] + " уже существует\r\n";
                         else if (err == 0) TBOut.Text += "Файл успешно переименован\r\n";
                         else if (err == 1) TBOut.Text += "Файл с именем " + comand[1] + " не найден\r\n";
+                        else TBOut.Text += "У вас недостаточно прав\r\n";
                     }
                     else
                         TBOut.Text += "Введены не все параметры\r\n";
@@ -655,7 +663,7 @@ namespace KursOS
                         int err = DelFile(comand[1]);
                         if (err == -1) TBOut.Text += "Файл с таким именем не найден\r\n";
                         else if (err == 0) TBOut.Text += "Файл успешно удалён\r\n";
-                        else if (err == 1) TBOut.Text += "У вас недостаточно прав на удаление файла\r\n";
+                        else if (err == 1) TBOut.Text += "У вас недостаточно прав для удаления файла\r\n";
                     }
                     else
                         TBOut.Text += "Введены не все параметры\r\n";
@@ -676,6 +684,7 @@ namespace KursOS
                         int err = ChangePerm(comand[1], comand[2]);
                         if (err == -1) TBOut.Text += "Файл не найден\r\n";
                         else if (err == -2) TBOut.Text += "Права доступа может менять только создатель файла\r\n";
+                        else if (err == -3) TBOut.Text += "Неверно задан параметр прав\r\n";
                         else TBOut.Text += "Права доступа изменены\r\n";
                     }
                     else
