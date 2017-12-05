@@ -17,7 +17,7 @@ namespace KursOS
         public class SuperBlock : ISerializable
         {
             private char[] FSName = { 'N', 'P', 'F', 'S' };
-            public ushort clustSz = 2048;
+            public ushort clustSz = 1024;
             public uint clustCount;
             public ushort ilistSz;
             public ushort freeinodeSz;
@@ -35,7 +35,7 @@ namespace KursOS
                 clustCount = (uint)sInfo.GetValue("clustCount", typeof(uint));
                 ilistSz = (ushort)sInfo.GetValue("ilistSz", typeof(ushort));
                 freeinodeSz = (ushort)sInfo.GetValue("freeinodeSz", typeof(ushort));
-                freeClustCount = (ushort)sInfo.GetValue("freeClustCount", typeof(ushort));
+                freeClustCount = (uint)sInfo.GetValue("freeClustCount", typeof(uint));
             }
 
             public void GetObjectData(SerializationInfo sInfo, StreamingContext contextArg)

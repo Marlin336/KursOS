@@ -89,7 +89,7 @@ namespace KursOS
         {
             int i = 0;
             TBIn.Text = TBIn.Text + " ";
-            if (!TBIn.Text.StartsWith("crtfl"))
+            if (!TBIn.Text.StartsWith("crtfl") && !TBIn.Text.StartsWith("append"))
             {
                 TBOut.Text += TBIn.Text + "\r\n";
                 do
@@ -264,7 +264,7 @@ namespace KursOS
                 return false;
         }
 
-        private int AddFile(string Name, string Text)
+        private int AddFile(string Name, string Text, byte flg)
         {
             foreach (Filesystem.Root root in roots)
             {
@@ -281,7 +281,7 @@ namespace KursOS
             else
                 clustneed = MassivByte.Length / Super.clustSz + 1;
 
-            if (Super.freeClustCount >= clustneed && clustneed <= 10)
+            if (Super.freeClustCount >= clustneed && clustneed <= ilist[0].clst.Length)
             {
                 foreach (Filesystem.Inode inode in ilist)
                 {
@@ -309,6 +309,7 @@ namespace KursOS
                 ilist[inodenum].isfree = false;
                 ilist[inodenum].uid = curruser;
                 ilist[inodenum].perm = startperm;
+                ilist[inodenum].flags = flg;
 
                 roots.Add(new Filesystem.Root(Name, inodenum));
 
@@ -332,46 +333,33 @@ namespace KursOS
             }
         }
 
-
-        private int AddDir(string Name)
-        {
-            foreach (Filesystem.Root root in roots)
-            {
-                if (root.name == Name)
-                {
-                    return -3;//Файл с таким именем существует
-                }
-            }
-
-        }
-
         private int Append(string FileName, string text)//Не проверено!!!
         {
-            int targroot = -1;
+            int targinodeid = -1;
             foreach (Filesystem.Root root in roots)
             {
                 if (root.name == FileName)
                 {
-                    targroot = root.idinode;
+                    targinodeid = root.idinode;
                     break;
                 }
             }
-            if (targroot == -1)
+            if (targinodeid == -1)
                 return -1;//Файл не найден
-            int clustneed = 0;
-            for (int i = 0; i < ilist[targroot].clst.Length; i++)
+            int lastlclust = 9;
+            for (int i = 0; i < ilist[targinodeid].clst.Length; i++)
             {
-                if (ilist[targroot].clst[i] == -1)
+                if (ilist[targinodeid].clst[i] == -1)
                 {
-                    clustneed = i - 1;
+                    lastlclust = i - 1;
                     break;
                 }
             }
-            MassivByte = Encoding.Default.GetBytes(Text);
+            MassivByte = Encoding.Default.GetBytes(text);
             int firstfreebyte = Super.clustSz;
             for (int i = 0; i < Super.clustSz; i++)
             {
-                if (clusters[ilist[targroot].clst[clustneed], i] == 0)
+                if (clusters[ilist[targinodeid].clst[lastlclust], i] == 0)
                 {
                     firstfreebyte = i;
                     break;
@@ -380,9 +368,7 @@ namespace KursOS
             if (Super.clustSz - firstfreebyte >= MassivByte.Length)//Размер добавочной строки меньше или равно оставшемуся в кластере месту
             {
                 for (int i = 0; i < MassivByte.Length; i++)
-                {
-                    clusters[ilist[targroot].clst[clustneed], firstfreebyte + i] = MassivByte[i];
-                }
+                    clusters[ilist[targinodeid].clst[lastlclust], firstfreebyte + i] = MassivByte[i];
                 return 0;
             }
             else//Если добавочная строка не поместиться в оставшееся в кластере место
@@ -390,41 +376,41 @@ namespace KursOS
                 int stopindex = 0;//Индекс байта в MassivByte, на котором остановились когда дозаполнили кластер
                 for (int i = 0; firstfreebyte + i < Super.clustSz; i++)
                 {
-                    clusters[ilist[targroot].clst[clustneed], firstfreebyte + i] = MassivByte[i];
+                    clusters[ilist[targinodeid].clst[lastlclust], firstfreebyte + i] = MassivByte[i];
                     stopindex = i;
                 }//Дописали в кластер информации столько, сколько вместилось
-                int residual = MassivByte.Length - stopindex;
+                int residual = MassivByte.Length - stopindex - 1;
                 int clustcount;
                 if (residual % Super.clustSz == 0)
                     clustcount = residual / Super.clustSz;
                 else
                     clustcount = residual / Super.clustSz + 1;
-                if (Super.freeClustCount >= clustcount && clustcount <= 10 - clustneed)
+                if (Super.freeClustCount >= clustcount && clustcount < ilist[targinodeid].clst.Length - lastlclust)
                 {
-                    for (int i = 0; i < clustcount; i++)//связываем кластеры с массивом инода и отмечаем как занятые в bitmap
+                    for (int i = lastlclust + 1; i < clustcount + lastlclust + 1; i++)//связываем кластеры с массивом инода и отмечаем как занятые в bitmap
                     {
                         for (int j = 0; j < bitmap.Count; j++)
                         {
                             if (!bitmap[j])
                             {
-                                ilist[targroot].clst[i] = j;
+                                ilist[targinodeid].clst[i] = j;
                                 bitmap[j] = true;
                                 break;
                             }
                         }
                     }
                     Super.freeClustCount -= (ushort)clustcount;//Уменьшаем счетчик свободных кластеров
-                    ilist[targroot].chdate = DateTime.Now;
+                    ilist[targinodeid].chdate = DateTime.Now;
                     //Дописываем оставшуюся информацию
                     int sym = stopindex + 1;
-                    int clustnum = clustneed + 1;
+                    int clustnum = lastlclust+1;
                     int numerator = 0;
                     while (sym < MassivByte.Length) //запись информации в кластер
                     {
-                        clusters[ilist[targroot].clst[clustnum], numerator % Super.clustSz] = MassivByte[sym];
+                        clusters[ilist[targinodeid].clst[clustnum], numerator % Super.clustSz] = MassivByte[sym];
                         numerator++;
                         sym++;
-                        if (numerator%Super.clustSz == 0)
+                        if (numerator%Super.clustSz == 0 && numerator != 0)
                             clustnum++;
                     }
 
@@ -534,7 +520,7 @@ namespace KursOS
             }
 
             int[] MassivCluster = ilist[roots[targroot].idinode].clst;
-            int lastclust = 0;
+            int lastclust = 9;
             for (int i = 0; i < MassivCluster.Length; i++)
             {
                 if (MassivCluster[i] == -1)
@@ -624,11 +610,10 @@ namespace KursOS
                 case "append":
                     if (comand[1] != null && comand[2] != null)
                     {
-                        int err = AddFile(comand[1], comand[2]);
+                        int err = Append(comand[1], comand[2]);
                         if (err == -1) TBOut.Text += "Недостаточно памяти для записи файла\r\n";
                         else if (err == -2) TBOut.Text += "Файл слишком большой\r\n";
-                        else if (err == -3) TBOut.Text += "Файл с таким именем уже существует\r\n";
-                        else TBOut.Text += "Файл успешно создан\r\n";
+                        else TBOut.Text += "Файл успешно изменён\r\n";
                     }
                     else
                         TBOut.Text += "Введены не все параметры\r\n";
@@ -649,7 +634,7 @@ namespace KursOS
                 case "crtfl":
                     if (comand[1] != null && comand[2] != null)
                     {
-                        int err = AddFile(comand[1], comand[2]);
+                        int err = AddFile(comand[1], comand[2], 0);
                         if (err == -1) TBOut.Text += "Недостаточно памяти для записи файла\r\n";
                         else if (err == -2) TBOut.Text += "Файл слишком большой\r\n";
                         else if (err == -3) TBOut.Text += "Файл с таким именем уже существует\r\n";
@@ -660,7 +645,7 @@ namespace KursOS
                     break;
                 case "crtdir":
                     if (comand[1] != null)
-                        AddDir(comand[1]);
+                        AddFile(comand[1], "", 2);
                     else
                         TBOut.Text += "Введены не все параметры\r\n";
                     break;
