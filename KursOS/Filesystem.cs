@@ -20,7 +20,6 @@ namespace KursOS
             public ushort clustSz = 1024;
             public uint clustCount;
             public ushort ilistSz;
-            public ushort freeinodeSz;
             public uint freeClustCount;
 
             public SuperBlock(int space)
@@ -34,7 +33,6 @@ namespace KursOS
                 clustSz = (ushort)sInfo.GetValue("clustSz", typeof(ushort));
                 clustCount = (uint)sInfo.GetValue("clustCount", typeof(uint));
                 ilistSz = (ushort)sInfo.GetValue("ilistSz", typeof(ushort));
-                freeinodeSz = (ushort)sInfo.GetValue("freeinodeSz", typeof(ushort));
                 freeClustCount = (uint)sInfo.GetValue("freeClustCount", typeof(uint));
             }
 
@@ -44,7 +42,6 @@ namespace KursOS
                 sInfo.AddValue("clustSz", clustSz);
                 sInfo.AddValue("clustCount", clustCount);
                 sInfo.AddValue("ilistSz", ilistSz);
-                sInfo.AddValue("freeinodeSz", freeinodeSz);
                 sInfo.AddValue("freeClustCount", freeClustCount);
             }
         }
@@ -108,7 +105,6 @@ namespace KursOS
             /*0x1  invisible
               0x2  directory*/
             public bool isfree = true;
-            public uint fileSz;
             public ushort uid;
             public DateTime chdate;
             public DateTime crdate;
@@ -119,26 +115,12 @@ namespace KursOS
                 id_inode = ID;
             }
 
-            /*public Inode(ushort ID_node, byte Permissions, byte Flags, uint FileSz,
-                ushort UID, DateTime ChangeDate, DateTime CreateDate, int[] clustnum)
-            {
-                id_inode = ID_node;
-                perm = Permissions;
-                flags = Flags;
-                fileSz = FileSz;
-                uid = UID;
-                chdate = ChangeDate;
-                crdate = CreateDate;
-                clst = clustnum;
-            }*/
-
             public Inode(SerializationInfo sInfo, StreamingContext contextArg)
             {
                 id_inode = (ushort)sInfo.GetValue("id_inode", typeof(ushort));
                 isfree = (bool)sInfo.GetValue("isfree", typeof(bool));
                 perm = (byte)sInfo.GetValue("perm", typeof(byte));
                 flags = (byte)sInfo.GetValue("flags", typeof(byte));
-                fileSz = (uint)sInfo.GetValue("fileSz", typeof(uint));
                 uid = (ushort)sInfo.GetValue("uid", typeof(ushort));
                 chdate = (DateTime)sInfo.GetValue("chdate", typeof(DateTime));
                 crdate = (DateTime)sInfo.GetValue("crdate", typeof(DateTime));
@@ -151,7 +133,6 @@ namespace KursOS
                 sInfo.AddValue("isfree", isfree);
                 sInfo.AddValue("perm", perm);
                 sInfo.AddValue("flags", flags);
-                sInfo.AddValue("fileSz", fileSz);
                 sInfo.AddValue("uid", uid);
                 sInfo.AddValue("chdate", chdate);
                 sInfo.AddValue("crdate", crdate);

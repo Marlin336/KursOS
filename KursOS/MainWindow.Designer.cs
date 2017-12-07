@@ -36,9 +36,9 @@
             // 
             // BEnter
             // 
-            this.BEnter.Location = new System.Drawing.Point(575, 310);
+            this.BEnter.Location = new System.Drawing.Point(685, 370);
             this.BEnter.Name = "BEnter";
-            this.BEnter.Size = new System.Drawing.Size(82, 20);
+            this.BEnter.Size = new System.Drawing.Size(82, 29);
             this.BEnter.TabIndex = 1;
             this.BEnter.Text = "BEnter";
             this.BEnter.UseVisualStyleBackColor = true;
@@ -58,7 +58,7 @@
             this.TBOut.Name = "TBOut";
             this.TBOut.ReadOnly = true;
             this.TBOut.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.TBOut.Size = new System.Drawing.Size(645, 292);
+            this.TBOut.Size = new System.Drawing.Size(755, 347);
             this.TBOut.TabIndex = 1;
             this.TBOut.TabStop = false;
             // 
@@ -67,16 +67,16 @@
             this.TBIn.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.TBIn.Location = new System.Drawing.Point(12, 310);
+            this.TBIn.Location = new System.Drawing.Point(12, 375);
             this.TBIn.Name = "TBIn";
-            this.TBIn.Size = new System.Drawing.Size(556, 20);
+            this.TBIn.Size = new System.Drawing.Size(667, 20);
             this.TBIn.TabIndex = 0;
             // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(669, 354);
+            this.ClientSize = new System.Drawing.Size(780, 407);
             this.Controls.Add(this.TBIn);
             this.Controls.Add(this.TBOut);
             this.Controls.Add(this.BEnter);

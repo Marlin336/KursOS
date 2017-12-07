@@ -20,12 +20,13 @@ namespace KursOS
         public List<Filesystem.Inode> ilist = new List<Filesystem.Inode>();
         public List<bool> bitmap = new List<bool>();
         public List<Filesystem.Root> roots = new List<Filesystem.Root>();
+        public List<Filesystem.Root> currdir;
         byte[] MassivByte;
         public string[] comand = new string[3];
         byte startperm = 2 | 4 | 8;
         public ushort curruser;
         public byte[,] clusters;
-        private string currdir;
+        private string currpath = "\\";
 
         public FLog LogForm;
 
@@ -37,8 +38,8 @@ namespace KursOS
                 ilist.Add(new Filesystem.Inode((ushort)i));
             }
             clusters = new byte[Super.clustCount, Super.clustSz];
-            currdir = "\\";
             LogForm = fl;
+            currdir = roots;
             InitializeComponent();
             //Запись в List пользователей из файла
             #region
@@ -85,7 +86,6 @@ namespace KursOS
             TBIn.Text = TBIn.Text + " ";
             if (!TBIn.Text.StartsWith("crtfl") && !TBIn.Text.StartsWith("append"))
             {
-                TBOut.Text += TBIn.Text + "\r\n";
                 do
                 {
                     comand[i] = TBIn.Text.Substring(0, TBIn.Text.IndexOf(' '));
@@ -94,6 +94,11 @@ namespace KursOS
                     if (i > 2)
                         break;
                 } while (TBIn.Text.Length != 0);
+                TBOut.Text += comand[0] + " " + comand[1];
+                if (comand[0] != "addusr")
+                    TBOut.Text += " " + comand[2] + "\r\n";
+                else
+                    TBOut.Text += "\r\n";
             }
             else
             {
@@ -103,7 +108,8 @@ namespace KursOS
                     TBIn.Text = TBIn.Text.Remove(0, TBIn.Text.IndexOf(' ') + 1);
                     i++;
                 } while (i < 2);
-                comand[2] = TBIn.Text.Substring(0, TBIn.Text.Length - 1);
+                if (TBIn.Text.Length > 0)
+                    comand[2] = TBIn.Text.Substring(0, TBIn.Text.Length - 1);
                 TBOut.Text += comand[0] + " " + comand[1] + "\r\n";
             }
             TBIn.Clear();
@@ -327,7 +333,7 @@ namespace KursOS
             }
         }
 
-        private int Append(string FileName, string text)//Не проверено!!!
+        private int Append(string FileName, string text)
         {
             int targinode = -1;
             foreach (Filesystem.Root root in roots)
@@ -342,6 +348,8 @@ namespace KursOS
                 return -1;//Файл не найден
             if (((ilist[roots[targinode].idinode].perm & 4) == 0 && curruser == ilist[roots[targinode].idinode].uid) || (curruser != ilist[roots[targinode].idinode].uid && (ilist[roots[targinode].idinode].perm & 1) == 0))
                 return -3; //Нет прав
+            if ((ilist[roots[targinode].idinode].flags & 2) == 2)
+                return -4;//Это папка
                 int lastlclust = 9;
             for (int i = 0; i < ilist[targinode].clst.Length; i++)
             {
@@ -365,6 +373,7 @@ namespace KursOS
             {
                 for (int i = 0; i < MassivByte.Length; i++)
                     clusters[ilist[targinode].clst[lastlclust], firstfreebyte + i] = MassivByte[i];
+                ilist[targinode].chdate = DateTime.Now;
                 return 0;
             }
             else//Если добавочная строка не поместиться в оставшееся в кластере место
@@ -510,16 +519,11 @@ namespace KursOS
             if (targroot == -1)//Файл не найден
                 return -1;
 
-            if (curruser == ilist[roots[targroot].idinode].uid)
-            {
-                if ((ilist[roots[targroot].idinode].perm & 8) == 0) //У создателя нет прав на чтение
-                    return 1;
-            }
-            else
-            {
-                if ((ilist[roots[targroot].idinode].perm & 2) == 0) //У другого пользователя нет прав на чтение
-                    return 1;
-            }
+            if ((ilist[targroot].flags & 2) == 2)
+                return -2;//Это каталог
+
+            if (((ilist[roots[targroot].idinode].perm & 8) == 0 && curruser == ilist[roots[targroot].idinode].uid) ^ ((ilist[roots[targroot].idinode].perm & 2) == 0 && curruser != ilist[roots[targroot].idinode].uid)) //Нет прав на чтение
+                return 1;
 
             int[] MassivCluster = ilist[roots[targroot].idinode].clst;
             int lastclust = 9;
@@ -575,21 +579,64 @@ namespace KursOS
                 return -2;//Попытка изменить права другим пользователем
         }
 
+        private void DisplayFileList()
+        {
+            TBOut.Text += "Имя\tПрава\tДата создания/Изменения\t\tРазмер\tПапка\tID создателя\r\n";
+            foreach (Filesystem.Root root in roots)
+            {
+                TBOut.Text += root.name + "\t";
+                if ((ilist[root.idinode].perm & 8) == 8)
+                    TBOut.Text += "r";
+                else
+                    TBOut.Text += "_";
+                if ((ilist[root.idinode].perm & 4) == 4)
+                    TBOut.Text += "w";
+                else
+                    TBOut.Text += "_";
+                if ((ilist[root.idinode].perm & 2) == 2)
+                    TBOut.Text += "r";
+                else
+                    TBOut.Text += "_";
+                if ((ilist[root.idinode].perm & 1) == 1)
+                    TBOut.Text += "w";
+                else
+                    TBOut.Text += "_";
+                TBOut.Text += "\t";
+                TBOut.Text += ilist[root.idinode].crdate.ToString()+"/"+ ilist[root.idinode].chdate.ToString()+"\t";
+                int lastclust = 10;
+                for (int i = 0; i < ilist[root.idinode].clst.Length; i++)
+                {
+                    if (ilist[root.idinode].clst[i] == -1)
+                    {
+                        lastclust = i;
+                        break;
+                    }
+                }
+                TBOut.Text += lastclust * Super.clustSz + "\t";
+                if ((ilist[root.idinode].flags & 2) == 2)
+                    TBOut.Text += "Да\t";
+                else
+                    TBOut.Text += "Нет\t";
+                TBOut.Text += ilist[root.idinode].uid + "\r\n";
+
+            }
+        }
+
         private bool GetComand(string cmd)
         {
             switch (cmd)
             {
                 case "help":
-                    TBOut.Text += "nusr name pass - создание пользователя с именем name и паролем pass\r\n"+
-                        "rmusr name pass - удалить пользователя с именем name и паролем pass\r\n"+
+                    TBOut.Text += "nusr <name> <pass> - создание пользователя с именем name и паролем pass\r\n"+
+                        "rmusr <name> <pass> - удалить пользователя с именем name и паролем pass\r\n"+
                         "lsusr - вывести список существующих пользователей\r\n"+
-                        "cp stpath finpath - копировать файл stpath в место finpath\r\n"+
-                        "rnm path new_name - переименовать файл path в new_name\r\n"+
-                        "crtfl file text - создать файл с именем file и содержимым text\r\n"+
-                        "crtdir name - создать папку с именем name\r\n" +
-                        "rm file - удалить файл file\r\n" +
-                        "cat file - показать содержимое файла file\r\n" +
-                        "chmod file perm - изменить права доступа к файлу file на perm\r\n" +
+                        "cp <stpath> <finpath> - копировать файл stpath в место finpath\r\n"+
+                        "rnm <old_name> <new_name> - переименовать файл old_name в new_name\r\n"+
+                        "crtfl <file> <text> - создать файл с именем file и содержимым text\r\n"+
+                        "crtdir <name> - создать папку с именем name\r\n" +
+                        "rm <file> - удалить файл file\r\n" +
+                        "cat <file> - показать содержимое файла file\r\n" +
+                        "chmod <file> <perm> - изменить права доступа к файлу file на perm\r\n" +
                         "pwd - узнать адрес текущей директории\r\n" +
                         "ls - вывести список файлов в текущей директрии\r\n";
                     return true;
@@ -620,6 +667,7 @@ namespace KursOS
                         if (err == -1) TBOut.Text += "Недостаточно памяти для записи файла\r\n";
                         else if (err == -2) TBOut.Text += "Файл слишком большой\r\n";
                         else if (err == -3) TBOut.Text += "Не достаточно прав для записи в файл\r\n";
+                        else if (err == -4) TBOut.Text += "Действие неприменимо к каталогу\r\n";
                         else TBOut.Text += "Файл успешно изменён\r\n";
                     }
                     else
@@ -674,6 +722,7 @@ namespace KursOS
                         int err = OpenFile(comand[1]);
                         if (err == -1) TBOut.Text += "Файл не найден\r\n";
                         else if (err == 1) TBOut.Text += "У вас недостаточно прав для чтения этого файла\r\n";
+                        else if (err == -2) TBOut.Text += "Действие неприменимо к каталогу. Используйте команду cd\r\n";
                     }
                     else
                         TBOut.Text += "Введены не все параметры\r\n";
@@ -691,9 +740,10 @@ namespace KursOS
                         TBOut.Text += "Введены не все параметры\r\n";
                     break;
                 case "pwd":
-                    TBOut.Text += currdir + "\r\n";
+                    TBOut.Text += currpath + "\r\n";
                     break;
                 case "ls":
+                    DisplayFileList();
                     break;
                 case "push":
                     Formating();
