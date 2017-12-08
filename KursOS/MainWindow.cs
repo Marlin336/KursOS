@@ -252,7 +252,6 @@ namespace KursOS
 
 
                 //Загружаем кластеры данных
-
                 stream = new FileStream("clust.sys", FileMode.Open);
                 clusters = (byte[,])formater.Deserialize(stream);
                 stream.Close();
@@ -320,7 +319,12 @@ namespace KursOS
                     if (sym % Super.clustSz == 0)
                         clustnum++;
                 }
-
+                if (currdir != roots)
+                {
+                    BinaryFormatter binform = new BinaryFormatter();
+                    FileStream stream = new FileStream(currpath, FileMode.Create);
+                    binform.Serialize(stream, currdir);
+                }
                 return inodenum; // Возвращаем номер инода
             }
             else
@@ -343,11 +347,10 @@ namespace KursOS
             }
             BinaryFormatter rootser = new BinaryFormatter();
             List<Filesystem.Root> dirroot = new List<Filesystem.Root>();
-            FileStream stream = new FileStream(DirName, FileMode.Create);
+            FileStream stream = new FileStream(currpath + DirName, FileMode.Create);
             rootser.Serialize(stream, dirroot);
             stream.Close();
-            MassivByte = Encoding.Default.GetBytes(File.ReadAllText(DirName));
-            File.Delete(DirName);
+            MassivByte = Encoding.Default.GetBytes(File.ReadAllText(currpath + DirName));
             int clustneed = 0;
             int inodenum = 0;
             if (MassivByte.Length % Super.clustSz == 0)
@@ -419,9 +422,9 @@ namespace KursOS
                     break;
                 }
             }
-            if ((targinode == -1) ^ ((ilist[targinode].flags & 2) == 0))
+            if ((targinode == -1) || ((ilist[targinode].flags & 2) == 0))
                 return -1;//Папка на найдена
-            currpath += DirName + "\\";
+            currpath += DirName;
             int lastclust = 9;
             for (int i = 0; i < ilist[targinode].clst.Length; i++)
             {
@@ -440,15 +443,10 @@ namespace KursOS
                     MassivByte[i * Super.clustSz + j] = clusters[MassivCluster[i], j];
                 }
             }
-            FileStream stream = new FileStream(DirName, FileMode.Create);
-            for (int i = 0; i < MassivByte.Length; i++)
-                stream.WriteByte(MassivByte[i]);
-            stream.Close();
-            stream = new FileStream(DirName, FileMode.Open);
+            FileStream stream = new FileStream(currpath, FileMode.Open);
             BinaryFormatter binform = new BinaryFormatter();
             currdir = (List<Filesystem.Root>)binform.Deserialize(stream);
             stream.Close();
-            File.Delete(DirName);
             return 0;
         }
 
