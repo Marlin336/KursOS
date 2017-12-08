@@ -17,7 +17,7 @@ namespace KursOS
         public class SuperBlock : ISerializable
         {
             private char[] FSName = { 'N', 'P', 'F', 'S' };
-            public ushort clustSz = 1024;
+            public ushort clustSz = 50;
             public uint clustCount;
             public ushort ilistSz;
             public uint freeClustCount;
