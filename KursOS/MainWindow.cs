@@ -253,7 +253,9 @@ namespace KursOS
                 stream = new FileStream("root", FileMode.Open);
                 currdir = (List<Filesystem.Root>)formater.Deserialize(stream);
                 stream.Close();
-
+                stream = new FileStream("Dir/ROOT", FileMode.Create);
+                formater.Serialize(stream, currdir);
+                stream.Close();
 
                 //Загружаем кластеры данных
                 stream = new FileStream("clust", FileMode.Open);
@@ -419,7 +421,7 @@ namespace KursOS
 
         }
 
-        private int OpenDir(string DirName)//проверить, почему бесконечный цикл
+        private int OpenDir(string DirName)
         {
             int targroot = -1;
             int targinode = -1;
