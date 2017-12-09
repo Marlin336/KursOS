@@ -26,7 +26,7 @@ namespace KursOS
         byte startperm = 2 | 4 | 8;
         public ushort curruser;
         public byte[,] clusters;
-        private string currpath = "\\";
+        private string currpath = "ROOT";
 
         public FLog LogForm;
 
@@ -40,6 +40,10 @@ namespace KursOS
             clusters = new byte[Super.clustCount, Super.clustSz];
             LogForm = fl;
             currdir = roots;
+            BinaryFormatter bin = new BinaryFormatter();
+            FileStream stream = new FileStream("Dir\\" + currpath, FileMode.Create);
+            bin.Serialize(stream, currdir);
+            stream.Close();
             InitializeComponent();
             //Запись в List пользователей из файла
             #region
@@ -319,12 +323,10 @@ namespace KursOS
                     if (sym % Super.clustSz == 0)
                         clustnum++;
                 }
-                if (currdir != roots)
-                {
-                    BinaryFormatter binform = new BinaryFormatter();
-                    FileStream stream = new FileStream(currpath, FileMode.Create);
-                    binform.Serialize(stream, currdir);
-                }
+                BinaryFormatter binform = new BinaryFormatter();
+                FileStream stream = new FileStream("Dir\\" + currpath, FileMode.Create);
+                binform.Serialize(stream, currdir);
+                stream.Close();
                 return inodenum; // Возвращаем номер инода
             }
             else
@@ -347,10 +349,10 @@ namespace KursOS
             }
             BinaryFormatter rootser = new BinaryFormatter();
             List<Filesystem.Root> dirroot = new List<Filesystem.Root>();
-            FileStream stream = new FileStream(currpath + DirName, FileMode.Create);
+            FileStream stream = new FileStream("Dir\\" + currpath + DirName, FileMode.Create);
             rootser.Serialize(stream, dirroot);
             stream.Close();
-            MassivByte = Encoding.Default.GetBytes(File.ReadAllText(currpath + DirName));
+            MassivByte = Encoding.Default.GetBytes(File.ReadAllText("Dir\\" + currpath + DirName));
             int clustneed = 0;
             int inodenum = 0;
             if (MassivByte.Length % Super.clustSz == 0)
@@ -398,7 +400,10 @@ namespace KursOS
                     if (sym % Super.clustSz == 0)
                         clustnum++;
                 }
-
+                BinaryFormatter binform = new BinaryFormatter();
+                stream = new FileStream("Dir\\" + currpath, FileMode.Create);
+                binform.Serialize(stream, currdir);
+                stream.Close();
                 return inodenum; // Возвращаем номер инода
             }
             else
@@ -413,12 +418,14 @@ namespace KursOS
 
         private int OpenDir(string DirName)
         {
+            int targroot = -1;
             int targinode = -1;
-            foreach (Filesystem.Root root in currdir)
+            for (int i = 0; i < currdir.Capacity; i++)
             {
-                if (root.name == DirName)
+                if (currdir[i].name == DirName)
                 {
-                    targinode = root.idinode;
+                    targinode = currdir[i].idinode;
+                    targroot = i;
                     break;
                 }
             }
@@ -434,7 +441,7 @@ namespace KursOS
                     break;
                 }
             }
-            int[] MassivCluster = ilist[currdir[targinode].idinode].clst;
+            int[] MassivCluster = ilist[currdir[targroot].idinode].clst;
             byte[] MassivByte = new byte[(lastclust + 1) * Super.clustSz];
             for (int i = 0; i <= lastclust; i++)
             {
@@ -443,7 +450,7 @@ namespace KursOS
                     MassivByte[i * Super.clustSz + j] = clusters[MassivCluster[i], j];
                 }
             }
-            FileStream stream = new FileStream(currpath, FileMode.Open);
+            FileStream stream = new FileStream("Dir\\" + currpath, FileMode.Open);
             BinaryFormatter binform = new BinaryFormatter();
             currdir = (List<Filesystem.Root>)binform.Deserialize(stream);
             stream.Close();
@@ -625,18 +632,28 @@ namespace KursOS
         private int OpenFile(string FileName)
         {
             int targroot = -1;
+            int targinode = -1;
+            for (int i = 0; i < currdir.Capacity; i++)
+            {
+                if (currdir[i].name == FileName)
+                {
+                    targinode = currdir[i].idinode;
+                    targroot = i;
+                    break;
+                }
+            }
             foreach (Filesystem.Root root in currdir)
             {
                 if (root.name == FileName)
                 {
-                    targroot = root.idinode;
+                    targinode = root.idinode;
                     break;
                 }
             }
-            if (targroot == -1)//Файл не найден
+            if (targinode == -1)//Файл не найден
                 return -1;
 
-            if ((ilist[targroot].flags & 2) == 2)
+            if ((ilist[targinode].flags & 2) == 2)
                 return -2;//Это каталог
 
             if (((ilist[currdir[targroot].idinode].perm & 8) == 0 && curruser == ilist[currdir[targroot].idinode].uid) ^ ((ilist[currdir[targroot].idinode].perm & 2) == 0 && curruser != ilist[currdir[targroot].idinode].uid)) //Нет прав на чтение
@@ -698,7 +715,7 @@ namespace KursOS
 
         private void DisplayFileList()
         {
-            TBOut.Text += "Имя\tПрава\tДата создания/Изменения\t\tРазмер\tПапка\tID создателя\r\n";
+            TBOut.Text += "Имя\tПрава\tДата создания/Изменения\t\tРазмер\tДир-я\tID создателя\r\n";
             foreach (Filesystem.Root root in currdir)
             {
                 TBOut.Text += root.name + "\t";
