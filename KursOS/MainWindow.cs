@@ -349,10 +349,10 @@ namespace KursOS
             }
             BinaryFormatter rootser = new BinaryFormatter();
             List<Filesystem.Root> dirroot = new List<Filesystem.Root>();
-            FileStream stream = new FileStream("Dir\\" + currpath + DirName, FileMode.Create);
+            FileStream stream = new FileStream("Dir\\" + currpath + "#" + DirName, FileMode.Create);
             rootser.Serialize(stream, dirroot);
             stream.Close();
-            MassivByte = Encoding.Default.GetBytes(File.ReadAllText("Dir\\" + currpath + DirName));
+            MassivByte = Encoding.Default.GetBytes(File.ReadAllText("Dir\\" + currpath + "#" + DirName));
             int clustneed = 0;
             int inodenum = 0;
             if (MassivByte.Length % Super.clustSz == 0)
@@ -404,6 +404,9 @@ namespace KursOS
                 stream = new FileStream("Dir\\" + currpath, FileMode.Create);
                 binform.Serialize(stream, currdir);
                 stream.Close();
+                OpenDir(DirName);
+                dirroot.Add(new Filesystem.Root("RET", -1));
+                OpenDir("RET");
                 return inodenum; // Возвращаем номер инода
             }
             else
@@ -420,7 +423,21 @@ namespace KursOS
         {
             int targroot = -1;
             int targinode = -1;
-            for (int i = 0; i < currdir.Capacity; i++)
+            if (DirName == "RET")
+            {
+                if (currpath != "ROOT")
+                {
+                    BinaryFormatter bin = new BinaryFormatter();
+                    currpath = currpath.Substring(0, currpath.LastIndexOf('#'));
+                    FileStream Newstream = new FileStream("Dir\\" + currpath, FileMode.Open);
+                    currdir = (List<Filesystem.Root>)bin.Deserialize(Newstream);
+                    Newstream.Close();
+                    return 0;
+                }
+                else
+                    return -2;
+            }
+            for (int i = 0; i < currdir.Count; i++)
             {
                 if (currdir[i].name == DirName)
                 {
@@ -431,7 +448,7 @@ namespace KursOS
             }
             if ((targinode == -1) || ((ilist[targinode].flags & 2) == 0))
                 return -1;//Папка на найдена
-            currpath += DirName;
+            currpath += "#" + DirName;
             int lastclust = 9;
             for (int i = 0; i < ilist[targinode].clst.Length; i++)
             {
@@ -633,7 +650,7 @@ namespace KursOS
         {
             int targroot = -1;
             int targinode = -1;
-            for (int i = 0; i < currdir.Capacity; i++)
+            for (int i = 0; i < currdir.Count; i++)
             {
                 if (currdir[i].name == FileName)
                 {
@@ -846,7 +863,14 @@ namespace KursOS
                         TBOut.Text += "Введены не все параметры\r\n";
                     break;
                 case "cd":
-                    OpenDir(comand[1]);
+                    if (comand[1] != null)
+                    {
+                        int err = OpenDir(comand[1]); ;
+                        if (err == -1) TBOut.Text += "Директория с таким именем не найдена\r\n";
+                        else if (err == -2) TBOut.Text += "ROOT не имеет родительской директории\r\n";
+                    }
+                    else
+                        TBOut.Text += "Введены не все параметры\r\n";
                     //Переход в папку
                     break;
                 case "rm":
