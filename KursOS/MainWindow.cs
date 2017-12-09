@@ -202,27 +202,27 @@ namespace KursOS
         {
             BinaryFormatter formater = new BinaryFormatter();
             //форматируем суперблок
-            FileStream stream = new FileStream("superblock.sys", FileMode.Create);
+            FileStream stream = new FileStream("superblock", FileMode.Create);
             formater.Serialize(stream, Super);
             stream.Close();
 
             //форматируем inode
-            stream = new FileStream("inodes.sys", FileMode.Create);
+            stream = new FileStream("inodes", FileMode.Create);
             formater.Serialize(stream, ilist);
             stream.Close();
 
             //форматируем bitmap
-            stream = new FileStream("bitmap.sys", FileMode.Create);
+            stream = new FileStream("bitmap", FileMode.Create);
             formater.Serialize(stream, bitmap);
             stream.Close();
 
             //форматируем к/к
-            stream = new FileStream("root.sys", FileMode.Create);
-            formater.Serialize(stream, roots);
+            stream = new FileStream("root", FileMode.Create);
+            formater.Serialize(stream, currdir);
             stream.Close();
 
             //форматируем кластеры с данными
-            stream = new FileStream("clust.sys", FileMode.Create);
+            stream = new FileStream("clust", FileMode.Create);
             formater.Serialize(stream, clusters);
             stream.Close();
         }
@@ -231,36 +231,36 @@ namespace KursOS
         {
             BinaryFormatter formater = new BinaryFormatter();
             //Загружаем суперблок
-            if ((File.Exists("superblock.sys") && File.Exists("inodes.sys") && File.Exists("bitmap.sys") && File.Exists("root.sys") && File.Exists("clust.sys")))
+            if ((File.Exists("superblock") && File.Exists("inodes") && File.Exists("bitmap") && File.Exists("root") && File.Exists("clust")))
             {
-                FileStream stream = new FileStream("superblock.sys", FileMode.Open);
+                FileStream stream = new FileStream("superblock", FileMode.Open);
                 Super = (Filesystem.SuperBlock)formater.Deserialize(stream);
                 stream.Close();
 
                 //Загружаем inode
-                stream = new FileStream("inodes.sys", FileMode.Open);
+                stream = new FileStream("inodes", FileMode.Open);
                 ilist = (List<Filesystem.Inode>)formater.Deserialize(stream);
                 stream.Close();
 
 
                 //Загружаем bitmap
-                stream = new FileStream("bitmap.sys", FileMode.Open);
+                stream = new FileStream("bitmap", FileMode.Open);
                 bitmap = (List<bool>)formater.Deserialize(stream);
                 stream.Close();
 
 
                 //Загружаем к/к
-                stream = new FileStream("root.sys", FileMode.Open);
-                roots = (List<Filesystem.Root>)formater.Deserialize(stream);
+                stream = new FileStream("root", FileMode.Open);
+                currdir = (List<Filesystem.Root>)formater.Deserialize(stream);
                 stream.Close();
 
 
                 //Загружаем кластеры данных
-                stream = new FileStream("clust.sys", FileMode.Open);
+                stream = new FileStream("clust", FileMode.Open);
                 clusters = (byte[,])formater.Deserialize(stream);
                 stream.Close();
 
-                currdir = roots;
+                currpath = "ROOT";
                 return true;
             }
             else
@@ -405,8 +405,8 @@ namespace KursOS
                 binform.Serialize(stream, currdir);
                 stream.Close();
                 OpenDir(DirName);
-                dirroot.Add(new Filesystem.Root("RET", -1));
-                OpenDir("RET");
+                dirroot.Add(new Filesystem.Root("..", -1));
+                OpenDir("..");
                 return inodenum; // Возвращаем номер инода
             }
             else
@@ -419,11 +419,11 @@ namespace KursOS
 
         }
 
-        private int OpenDir(string DirName)
+        private int OpenDir(string DirName)//проверить, почему бесконечный цикл
         {
             int targroot = -1;
             int targinode = -1;
-            if (DirName == "RET")
+            if (DirName == "..")
             {
                 if (currpath != "ROOT")
                 {
@@ -448,6 +448,12 @@ namespace KursOS
             }
             if ((targinode == -1) || ((ilist[targinode].flags & 2) == 0))
                 return -1;//Папка на найдена
+            if ((ilist[targinode].perm & 8) == 0 && curruser== ilist[targinode].uid)
+                return -3; //Нет прав на чтение
+            if ((ilist[targinode].perm & 2) == 0 && curruser != ilist[targinode].uid)
+            {
+                return -3; //Нет прав на чтение
+            }
             currpath += "#" + DirName;
             int lastclust = 9;
             for (int i = 0; i < ilist[targinode].clst.Length; i++)
@@ -477,19 +483,21 @@ namespace KursOS
         private int Append(string FileName, string text)
         {
             int targinode = -1;
-            foreach (Filesystem.Root root in currdir)
+            int targroot = -1;
+            for (int i = 0; i < currdir.Count; i++)
             {
-                if (root.name == FileName)
+                if (currdir[i].name == FileName)
                 {
-                    targinode = root.idinode;
+                    targinode = currdir[i].idinode;
+                    targroot = i;
                     break;
                 }
             }
-            if (targinode == -1)
+            if (targroot == -1)
                 return -1;//Файл не найден
-            if (((ilist[currdir[targinode].idinode].perm & 4) == 0 && curruser == ilist[currdir[targinode].idinode].uid) || (curruser != ilist[currdir[targinode].idinode].uid && (ilist[currdir[targinode].idinode].perm & 1) == 0))
+            if (((ilist[targinode].perm & 4) == 0 && curruser == ilist[targinode].uid) || (curruser != ilist[targinode].uid && (ilist[targinode].perm & 1) == 0))
                 return -3; //Нет прав
-            if ((ilist[currdir[targinode].idinode].flags & 2) == 2)
+            if ((ilist[targinode].flags & 2) == 2)
                 return -4;//Это папка
                 int lastlclust = 9;
             for (int i = 0; i < ilist[targinode].clst.Length; i++)
@@ -609,18 +617,22 @@ namespace KursOS
             if (targroot == -1)//Файл с именем FileName не найден
                 return -1;
 
-            if (ilist[currdir[targroot].idinode].uid == curruser)
+            if (ilist[rootdel.idinode].uid == curruser)
             {
-                if ((ilist[currdir[targroot].idinode].perm & 4) == 0)
+                if ((ilist[rootdel.idinode].perm & 4) == 0)
                     return 1;//У создателя нет прав на изменение файла
             }
             else
             {
-                if ((ilist[currdir[targroot].idinode].perm & 1) == 0)
+                if ((ilist[rootdel.idinode].perm & 1) == 0)
                     return 1;//У другого пользователя нет прав на изменение файла
             }
 
-            int[] MassivCluster = ilist[currdir[targroot].idinode].clst;
+            if ((ilist[rootdel.idinode].flags & 2) == 2)//Удаляемый файл является директорией
+            {
+                return DelDir(FileName);
+            }
+            int[] MassivCluster = ilist[rootdel.idinode].clst;
             int lastclust = 0;
             for (int i = 0; i < MassivCluster.Length; i++)
             {
@@ -638,11 +650,58 @@ namespace KursOS
                 }
                 bitmap[MassivCluster[i]] = false;
             }
-            ushort currid = ilist[currdir[targroot].idinode].id_inode;
-            ilist[currdir[targroot].idinode] = new Filesystem.Inode(currid);
-            Super.freeClustCount++;
+            ushort currid = ilist[rootdel.idinode].id_inode;
+            ilist[rootdel.idinode] = new Filesystem.Inode(currid);
+            Super.freeClustCount += (uint)lastclust + 1;
             currdir.Remove(rootdel);
 
+            BinaryFormatter binform = new BinaryFormatter();
+            FileStream stream = new FileStream("Dir\\" + currpath, FileMode.Create);
+            binform.Serialize(stream, currdir);
+            stream.Close();
+
+            return 0;
+        }
+
+        private int CanWrite(string FileName)
+        {
+            int targinode = -1;
+            for (int i = 0; i < currdir.Count; i++)
+            {
+                if (currdir[i].name == FileName)
+                {
+                    targinode = currdir[i].idinode;
+                    break;
+                }
+            }
+            if (ilist[targinode].uid == curruser)
+            {
+                if ((ilist[targinode].perm & 4) == 4)
+                    return 1;//Есть право
+            }
+            else
+            {
+                if ((ilist[targinode].perm & 1) == 1)
+                    return 1;//Есть право
+            }
+            return -1;//Нет прав
+        }
+
+        private int DelDir(string DirName)
+        {
+            OpenDir(DirName);
+            foreach (var file in currdir)
+            {
+                if (CanWrite(file.name) == -1)//Если хоть один файл внутри нельзя удалить
+                {
+                    OpenDir("..");
+                    return 1;//Нет прав для удаления файлов внутри
+                }
+            }
+            while (currdir.Count > 0)
+                DelFile(currdir[0].name);
+            OpenDir("..");
+            DelFile(DirName);
             return 0;
         }
 
@@ -705,22 +764,25 @@ namespace KursOS
         {
             int permtoint = 0;
             int targroot = -1;
-            foreach (Filesystem.Root root in currdir)
+            int targinode = -1;
+            for (int i = 0; i < currdir.Count; i++)
             {
-                if (root.name == FileName)
+                if (currdir[i].name == FileName)
                 {
-                    targroot = root.idinode;
+                    targinode = currdir[i].idinode;
+                    targroot = i;
                     break;
                 }
             }
             if (targroot == -1)
                 return -1; //Файл не найден
 
-            if (curruser == ilist[currdir[targroot].idinode].uid)//Изменить права может только создатель файла
+            if (curruser == ilist[targinode].uid)//Изменить права может только создатель файла
             {
                 if (int.TryParse(new_perm, out permtoint))
                 {
-                    ilist[currdir[targroot].idinode].perm = (byte)permtoint;
+                    ilist[targinode].perm = (byte)permtoint;
+                    ilist[targinode].chdate = DateTime.Now;
                     return 0;
                 }
                 else
@@ -868,18 +930,19 @@ namespace KursOS
                         int err = OpenDir(comand[1]); ;
                         if (err == -1) TBOut.Text += "Директория с таким именем не найдена\r\n";
                         else if (err == -2) TBOut.Text += "ROOT не имеет родительской директории\r\n";
+                        else if (err == -3) TBOut.Text += "У вас нет прав для просмотра содержимого директории\r\n";
+                        else TBOut.Text += currpath + "\r\n";
                     }
                     else
                         TBOut.Text += "Введены не все параметры\r\n";
-                    //Переход в папку
                     break;
                 case "rm":
                     if (comand[1] != null)
                     {
                         int err = DelFile(comand[1]);
-                        if (err == -1) TBOut.Text += "Файл с таким именем не найден\r\n";
-                        else if (err == 0) TBOut.Text += "Файл успешно удалён\r\n";
-                        else if (err == 1) TBOut.Text += "У вас недостаточно прав для удаления файла\r\n";
+                        if (err == -1) TBOut.Text += "Файл/директория с таким именем не найден\r\n";
+                        else if (err == 0) TBOut.Text += "Файл/директория успешно удален\r\n";
+                        else if (err == 1) TBOut.Text += "У вас недостаточно прав для удаления файла/директории\r\n";
                     }
                     else
                         TBOut.Text += "Введены не все параметры\r\n";
