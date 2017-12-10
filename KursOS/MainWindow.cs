@@ -274,9 +274,7 @@ namespace KursOS
             foreach (Filesystem.Root root in currdir)
             {
                 if (root.name == FileName)
-                {
                     return -3;//Файл с таким именем существует
-                }
             }
             MassivByte = Encoding.Default.GetBytes(Text);
             int clustneed = 0;
@@ -463,9 +461,7 @@ namespace KursOS
             if ((ilist[targinode].perm & 8) == 0 && curruser== ilist[targinode].uid)
                 return -3; //Нет прав на чтение
             if ((ilist[targinode].perm & 2) == 0 && curruser != ilist[targinode].uid)
-            {
                 return -3; //Нет прав на чтение
-            }
             currpath += "#" + nowgoto;
             int lastclust = 9;
             for (int i = 0; i < ilist[targinode].clst.Length; i++)
@@ -481,9 +477,7 @@ namespace KursOS
             for (int i = 0; i <= lastclust; i++)
             {
                 for (int j = 0; (j < Super.clustSz); j++)
-                {
                     MassivByte[i * Super.clustSz + j] = clusters[MassivCluster[i], j];
-                }
             }
             FileStream stream = new FileStream("Dir\\" + currpath, FileMode.Open);
             BinaryFormatter binform = new BinaryFormatter();
@@ -692,15 +686,31 @@ namespace KursOS
                 }
             }
             if (ilist[targinode].uid == curruser)
-            {
                 if ((ilist[targinode].perm & 4) == 4)
-                    return 1;//Есть право
-            }
+                    return 1;//Есть права
             else
-            {
                 if ((ilist[targinode].perm & 1) == 1)
                     return 1;//Есть право
+            return -1;//Нет прав
+        }
+
+        private int CanRead(string FileName)
+        {
+            int targinode = -1;
+            for (int i = 0; i < currdir.Count; i++)
+            {
+                if (currdir[i].name == FileName)
+                {
+                    targinode = currdir[i].idinode;
+                    break;
+                }
             }
+            if (ilist[targinode].uid == curruser)
+                if ((ilist[targinode].perm & 8) == 8)
+                    return 1;//Есть права
+            else
+                if ((ilist[targinode].perm & 2) == 2)
+                    return 1;//Есть право
             return -1;//Нет прав
         }
 
@@ -722,7 +732,7 @@ namespace KursOS
             return 0;
         }
 
-        private int OpenFile(string FileName)
+        private void OpenFile(string FileName, ref string Stream)
         {
             int targroot = -1;
             int targinode = -1;
@@ -735,11 +745,38 @@ namespace KursOS
                     break;
                 }
             }
-            foreach (Filesystem.Root root in currdir)
+
+            int[] MassivCluster = ilist[currdir[targroot].idinode].clst;
+            int lastclust = 9;
+            for (int i = 0; i < MassivCluster.Length; i++)
             {
-                if (root.name == FileName)
+                if (MassivCluster[i] == -1)
                 {
-                    targinode = root.idinode;
+                    lastclust = i - 1;
+                    break;
+                }
+            }
+            byte[] MassivByte = new byte[(lastclust + 1) * Super.clustSz];
+            for (int i = 0; i <= lastclust; i++)
+            {
+                for (int j = 0; (j < Super.clustSz); j++)
+                {
+                    MassivByte[i * Super.clustSz + j] = clusters[MassivCluster[i], j];
+                }
+            }
+            Stream = Encoding.Default.GetString(MassivByte);
+        }
+
+        private int OpenFile(string FileName)
+        {
+            int targroot = -1;
+            int targinode = -1;
+            for (int i = 0; i < currdir.Count; i++)
+            {
+                if (currdir[i].name == FileName)
+                {
+                    targinode = currdir[i].idinode;
+                    targroot = i;
                     break;
                 }
             }
@@ -776,6 +813,60 @@ namespace KursOS
             TBOut.Text += "\r\n";
             return 0;
          }
+
+        private int CopyFile(string FileToCopy, string PathToCopy)
+        {
+            int targinode = -1;
+            int targroot = -1;
+            for (int i = 0; i < currdir.Count; i++)
+            {
+                if (currdir[i].name == FileToCopy)
+                {
+                    targinode = currdir[i].idinode;
+                    targroot = i;
+                    break;
+                }
+            }
+            if (targroot == -1)
+                return -1;//Файл не найден
+            if (curruser == ilist[targinode].uid)
+                if ((ilist[targinode].perm & 8) == 0)
+                    return -2;//Нет прав
+            else
+                if ((ilist[targinode].perm & 2) == 0)
+                    return -2;//Нет прав
+            string CopyText = null;
+            if ((ilist[targinode].flags & 2) == 2)//Копируем папку
+            {
+                OpenDir(FileToCopy);
+                string[,] Massivfiletext = new string[currdir.Count, 2];
+                for (int i = 0; i < currdir.Count; i++)
+                {
+                    if (CanRead(currdir[i].name) == 1)
+                    {
+                        Massivfiletext[i, 0] = currdir[i].name;
+                        OpenFile(currdir[i].name, ref CopyText);
+                        Massivfiletext[i, 1] = CopyText;
+                    }
+                    else
+                        return -2;
+                }
+                OpenDir("..");
+                OpenDir(PathToCopy);
+                AddDir(FileToCopy);
+                OpenDir(FileToCopy);
+                for (int i = 0; i < Massivfiletext.Length / 2; i++)//Делим на 2 потому что Length возвращает общее кол-во элементов, а массив - двумерный
+                    AddFile(Massivfiletext[i, 0], Massivfiletext[i, 1]);
+                OpenDir("..");
+            }
+            else
+            {
+                OpenFile(FileToCopy, ref CopyText);
+                OpenDir(PathToCopy);
+                AddFile(FileToCopy, CopyText);
+            }
+            return 0;
+        }
 
         private int ChangePerm(string FileName, string new_perm)
         {
@@ -904,6 +995,15 @@ namespace KursOS
                         TBOut.Text += "Введены не все параметры\r\n";
                     break;
                 case "cp":
+                    if (comand[1] != null && comand[2] != null)
+                    {
+                        int err = CopyFile(comand[1], comand[2]);
+                        if (err == -1) TBOut.Text += "Файл не найден\r\n";
+                        else if (err == -2) TBOut.Text += "Не достаточно прав на копирование этого файла/директории\r\n";
+                        else TBOut.Text += "Файл/директория скопирован\r\n";
+                    }
+                    else
+                        TBOut.Text += "Введены не все параметры\r\n";
                     break;
                 case "rnm":
                     if (comand[1] != null && comand[2] != null)
