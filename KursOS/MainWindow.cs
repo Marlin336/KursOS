@@ -423,9 +423,14 @@ namespace KursOS
 
         private int OpenDir(string DirName)
         {
+            string nowgoto;
+            if (DirName.IndexOf('/') > -1)
+                nowgoto = DirName.Substring(0, DirName.IndexOf('/'));
+            else
+                nowgoto = DirName;
             int targroot = -1;
             int targinode = -1;
-            if (DirName == "..")
+            if (nowgoto == "..")
             {
                 if (currpath != "ROOT")
                 {
@@ -434,6 +439,11 @@ namespace KursOS
                     FileStream Newstream = new FileStream("Dir\\" + currpath, FileMode.Open);
                     currdir = (List<Filesystem.Root>)bin.Deserialize(Newstream);
                     Newstream.Close();
+                    if (DirName.IndexOf('/') > -1 && DirName.Length > 1)
+                    {
+                        DirName = DirName.Substring(DirName.IndexOf('/') + 1);
+                        OpenDir(DirName);
+                    }
                     return 0;
                 }
                 else
@@ -441,7 +451,7 @@ namespace KursOS
             }
             for (int i = 0; i < currdir.Count; i++)
             {
-                if (currdir[i].name == DirName)
+                if (currdir[i].name == nowgoto)
                 {
                     targinode = currdir[i].idinode;
                     targroot = i;
@@ -456,7 +466,7 @@ namespace KursOS
             {
                 return -3; //Нет прав на чтение
             }
-            currpath += "#" + DirName;
+            currpath += "#" + nowgoto;
             int lastclust = 9;
             for (int i = 0; i < ilist[targinode].clst.Length; i++)
             {
@@ -479,6 +489,11 @@ namespace KursOS
             BinaryFormatter binform = new BinaryFormatter();
             currdir = (List<Filesystem.Root>)binform.Deserialize(stream);
             stream.Close();
+            if (DirName.IndexOf('/') > -1 && DirName.Length > 1)
+            {
+                DirName = DirName.Substring(DirName.IndexOf('/')+1);
+                OpenDir(DirName);
+            }
             return 0;
         }
 
@@ -929,7 +944,7 @@ namespace KursOS
                 case "cd":
                     if (comand[1] != null)
                     {
-                        int err = OpenDir(comand[1]); ;
+                        int err = OpenDir(comand[1]);
                         if (err == -1) TBOut.Text += "Директория с таким именем не найдена\r\n";
                         else if (err == -2) TBOut.Text += "ROOT не имеет родительской директории\r\n";
                         else if (err == -3) TBOut.Text += "У вас нет прав для просмотра содержимого директории\r\n";
