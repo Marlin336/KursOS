@@ -19,8 +19,7 @@ namespace KursOS
         public Filesystem.SuperBlock Super = new Filesystem.SuperBlock(20971520);
         public List<Filesystem.Inode> ilist = new List<Filesystem.Inode>();
         public List<bool> bitmap = new List<bool>();
-        public List<Filesystem.Root> roots = new List<Filesystem.Root>();
-        public List<Filesystem.Root> currdir;
+        public List<Filesystem.Root> currdir = new List<Filesystem.Root>();
         byte[] MassivByte;
         public string[] comand = new string[3];
         byte startperm = 2 | 4 | 8;
@@ -39,7 +38,6 @@ namespace KursOS
             }
             clusters = new byte[Super.clustCount, Super.clustSz];
             LogForm = fl;
-            currdir = roots;
             BinaryFormatter bin = new BinaryFormatter();
             FileStream stream = new FileStream("Dir\\" + currpath, FileMode.Create);
             bin.Serialize(stream, currdir);
@@ -269,6 +267,11 @@ namespace KursOS
                 return false;
         }
 
+        private string GetCurrPath()
+        {
+            return currpath;
+        }
+
         private int AddFile(string FileName, string Text)
         {
             foreach (Filesystem.Root root in currdir)
@@ -421,9 +424,15 @@ namespace KursOS
 
         private int OpenDir(string DirName)
         {
+            if (DirName.StartsWith("ROOT"))//Если путь начинается с ROOT - путь абсолютный
+            {
+                while (GetCurrPath() != "ROOT")
+                    OpenDir("..");
+                DirName = DirName.Substring(DirName.IndexOf("#")+1);
+            }
             string nowgoto;
-            if (DirName.IndexOf('/') > -1)
-                nowgoto = DirName.Substring(0, DirName.IndexOf('/'));
+            if (DirName.IndexOf('#') > -1)
+                nowgoto = DirName.Substring(0, DirName.IndexOf('#'));
             else
                 nowgoto = DirName;
             int targroot = -1;
@@ -437,9 +446,9 @@ namespace KursOS
                     FileStream Newstream = new FileStream("Dir\\" + currpath, FileMode.Open);
                     currdir = (List<Filesystem.Root>)bin.Deserialize(Newstream);
                     Newstream.Close();
-                    if (DirName.IndexOf('/') > -1 && DirName.Length > 1)
+                    if (DirName.IndexOf('#') > -1 && DirName.Length > 1)
                     {
-                        DirName = DirName.Substring(DirName.IndexOf('/') + 1);
+                        DirName = DirName.Substring(DirName.IndexOf('#') + 1);
                         OpenDir(DirName);
                     }
                     return 0;
@@ -483,9 +492,9 @@ namespace KursOS
             BinaryFormatter binform = new BinaryFormatter();
             currdir = (List<Filesystem.Root>)binform.Deserialize(stream);
             stream.Close();
-            if (DirName.IndexOf('/') > -1 && DirName.Length > 1)
+            if (DirName.IndexOf('#') > -1 && DirName.Length > 1)
             {
-                DirName = DirName.Substring(DirName.IndexOf('/')+1);
+                DirName = DirName.Substring(DirName.IndexOf('#')+1);
                 OpenDir(DirName);
             }
             return 0;
@@ -836,6 +845,8 @@ namespace KursOS
                 if ((ilist[targinode].perm & 2) == 0)
                     return -2;//Нет прав
             string CopyText = null;
+            string[] Pathfin = PathToCopy.Split('#');
+            string[] Currpath = GetCurrPath().Split('#');
             if ((ilist[targinode].flags & 2) == 2)//Копируем папку
             {
                 OpenDir(FileToCopy);
@@ -1088,7 +1099,7 @@ namespace KursOS
                         TBOut.Text += "Введены не все параметры\r\n";
                     break;
                 case "pwd":
-                    TBOut.Text += currpath + "\r\n";
+                    TBOut.Text += GetCurrPath() + "\r\n";
                     break;
                 case "ls":
                     DisplayFileList();

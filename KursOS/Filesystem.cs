@@ -17,9 +17,8 @@ namespace KursOS
         public class SuperBlock : ISerializable
         {
             private char[] FSName = { 'N', 'P', 'F', 'S' };
-            public ushort clustSz = 100;
+            public ushort clustSz = 1024;
             public uint clustCount;
-            public ushort ilistSz;
             public uint freeClustCount;
 
             public SuperBlock(int space)
@@ -32,7 +31,6 @@ namespace KursOS
                 FSName = (char[])sInfo.GetValue("FSName", typeof(char[]));
                 clustSz = (ushort)sInfo.GetValue("clustSz", typeof(ushort));
                 clustCount = (uint)sInfo.GetValue("clustCount", typeof(uint));
-                ilistSz = (ushort)sInfo.GetValue("ilistSz", typeof(ushort));
                 freeClustCount = (uint)sInfo.GetValue("freeClustCount", typeof(uint));
             }
 
@@ -41,7 +39,6 @@ namespace KursOS
                 sInfo.AddValue("FSName", FSName);
                 sInfo.AddValue("clustSz", clustSz);
                 sInfo.AddValue("clustCount", clustCount);
-                sInfo.AddValue("ilistSz", ilistSz);
                 sInfo.AddValue("freeClustCount", freeClustCount);
             }
         }
