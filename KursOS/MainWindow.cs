@@ -1080,9 +1080,13 @@ namespace KursOS
                         TBOut.Text += "Введены не все параметры\r\n";
                     break;
                 case "crtfl":
-                    if (comand[1] != null && comand[2] != null)
+                    if (comand[1] != null)
                     {
-                        int err = AddFile(comand[1], comand[2]);
+                        int err;
+                        if (comand[2] != null)
+                            err = AddFile(comand[1], comand[2]);
+                        else
+                            err = err = AddFile(comand[1], "");
                         if (err == -1) TBOut.Text += "Недостаточно памяти для записи файла\r\n";
                         else if (err == -2) TBOut.Text += "Файл слишком большой\r\n";
                         else if (err == -3) TBOut.Text += "Файл с таким именем уже существует\r\n";
@@ -1170,4 +1174,3 @@ namespace KursOS
         }
     }
 }
-//Организовать папки
