@@ -13,6 +13,16 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 namespace KursOS
 {
+    public struct MassivFile
+    {
+        public string name;
+        public string text;
+        public MassivFile(string Name, string Text)
+        {
+            name = Name;
+            text = Text;
+        }
+    };
     public partial class MainWindow : Form
     {
         public List<Users> UsList = new List<Users>();
@@ -871,30 +881,32 @@ namespace KursOS
             if (targroot == -1)
                 return -1;//Файл не найден
             if (curruser == ilist[targinode].uid)
+            {
                 if ((ilist[targinode].perm & 8) == 0)
                     return -2;//Нет прав
+            }
             else
+            {
                 if ((ilist[targinode].perm & 2) == 0)
                     return -2;//Нет прав
+            }
             string CopyText = null;
             string Start = GetCurrPath();//Начинаем путь отсюда
-            List<string> CopyingDirName = new List<string>();//Список директорий внутри копируемой директории
             if ((ilist[targinode].flags & 2) == 2)//Копируем папку
             {
                 OpenDir(FileToCopy);
-                string[,] Massivfiletext = new string[currdir.Count, 2];
+                List<MassivFile> Massivfiletext = new List<MassivFile>();
                 for (int i = 0; i < currdir.Count; i++)
                 {
                     if (CanRead(currdir[i].name) == 1)
                     {
                         if ((ilist[currdir[i].idinode].flags & 2) == 0)//Если внутри копируемой директории файл
                         {
-                            Massivfiletext[i, 0] = currdir[i].name;
                             OpenFile(currdir[i].name, ref CopyText);
-                            Massivfiletext[i, 1] = CopyText;
+                            Massivfiletext.Add(new MassivFile(currdir[i].name, CopyText));
                         }
                         else//Если внутри копируемой директории еще директория
-                            CopyingDirName.Add(currdir[i].name);
+                            return -3;
                     }
                     else
                         return -2;
@@ -903,8 +915,8 @@ namespace KursOS
                 OpenDir(PathToCopy);
                 AddDir(FileToCopy);
                 OpenDir(FileToCopy);
-                for (int i = 0; i < Massivfiletext.Length / 2; i++)//Делим на 2 потому что Length возвращает общее кол-во элементов, а массив - двумерный
-                    AddFile(Massivfiletext[i, 0], Massivfiletext[i, 1]);
+                for (int i = 0; i < Massivfiletext.Count; i++)
+                    AddFile(Massivfiletext[i].name, Massivfiletext[i].text);
                 OpenDir("..");
             }
             else
@@ -914,12 +926,6 @@ namespace KursOS
                 AddFile(FileToCopy, CopyText);
             }
             OpenDir(Start);
-            for (int i = 0; i < CopyingDirName.Count; i++)//Копируем все директории что были в копируемой директории в скопированную директорию
-            {
-                OpenDir(FileToCopy);
-                CopyFile(CopyingDirName[i], PathToCopy + FileToCopy);
-                OpenDir(Start);
-            }
             return 0;
         }
 
@@ -1055,6 +1061,7 @@ namespace KursOS
                         int err = CopyFile(comand[1], comand[2]);
                         if (err == -1) TBOut.Text += "Файл не найден\r\n";
                         else if (err == -2) TBOut.Text += "Не достаточно прав на копирование этого файла/директории\r\n";
+                        else if (err == -3) TBOut.Text += "Копируемая директория содержит директории\r\n";
                         else TBOut.Text += "Файл/директория скопирован\r\n";
                     }
                     else
