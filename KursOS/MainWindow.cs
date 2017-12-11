@@ -649,9 +649,8 @@ namespace KursOS
             }
 
             if ((ilist[rootdel.idinode].flags & 2) == 2)//Удаляемый файл является директорией
-            {
                 return DelDir(FileName);
-            }
+
             int[] MassivCluster = ilist[rootdel.idinode].clst;
             int lastclust = 0;
             for (int i = 0; i < MassivCluster.Length; i++)
@@ -665,9 +664,7 @@ namespace KursOS
             for (int i = 0; i <= lastclust; i++)
             {
                 for (int j = 0; j < Super.clustSz; j++)
-                {
                     clusters[MassivCluster[i], j] = 0; //Очистка занятых файлом кластеров
-                }
                 bitmap[MassivCluster[i]] = false;
             }
             ushort currid = ilist[rootdel.idinode].id_inode;
@@ -726,18 +723,53 @@ namespace KursOS
         private int DelDir(string DirName)
         {
             OpenDir(DirName);
-            foreach (var file in currdir)
+            if (currdir.Count != 0)
             {
-                if (CanWrite(file.name) == -1)//Если хоть один файл внутри нельзя удалить
+                foreach (var file in currdir)
                 {
-                    OpenDir("..");
-                    return 1;//Нет прав для удаления файлов внутри
+                    if (CanWrite(file.name) == -1)//Если хоть один файл внутри нельзя удалить
+                    {
+                        OpenDir("..");
+                        return 1;//Нет прав для удаления файлов внутри
+                    }
+                }
+                while (currdir.Count > 0)
+                    DelFile(currdir[0].name);//Постоянно удаляется первый в списке поэтому список смещается и мы удаляем только первый элемент
+            }
+            OpenDir("..");
+            Filesystem.Root delroot = new Filesystem.Root();
+            for (int i = 0; i < currdir.Count; i++)
+            {
+                if (currdir[i].name == DirName)
+                {
+                    delroot = currdir[i];
+                    break;
                 }
             }
-            while (currdir.Count > 0)
-                DelFile(currdir[0].name);
-            OpenDir("..");
-            DelFile(DirName);
+            int[] MassivCluster = ilist[delroot.idinode].clst;
+            int id = delroot.idinode;
+            ilist[id] = new Filesystem.Inode((ushort)id);
+            int lastclust = 0;
+            for (int i = 0; i < MassivCluster.Length; i++)
+            {
+                if (MassivCluster[i] == -1)
+                {
+                    lastclust = i - 1;
+                    break;
+                }
+            }
+            for (int i = 0; i <= lastclust; i++)
+            {
+                for (int j = 0; j < Super.clustSz; j++)
+                    clusters[MassivCluster[i], j] = 0; //Очистка занятых файлом кластеров
+                bitmap[MassivCluster[i]] = false;
+            }
+            Super.freeClustCount += (uint)lastclust + 1;
+            currdir.Remove(delroot);
+            BinaryFormatter binform = new BinaryFormatter();
+            FileStream stream = new FileStream("Dir\\" + currpath, FileMode.Create);
+            binform.Serialize(stream, currdir);
+            stream.Close();
             return 0;
         }
 
@@ -845,8 +877,8 @@ namespace KursOS
                 if ((ilist[targinode].perm & 2) == 0)
                     return -2;//Нет прав
             string CopyText = null;
-            string[] Pathfin = PathToCopy.Split('#');
-            string[] Currpath = GetCurrPath().Split('#');
+            string Start = GetCurrPath();//Начинаем путь отсюда
+            List<string> CopyingDirName = new List<string>();//Список директорий внутри копируемой директории
             if ((ilist[targinode].flags & 2) == 2)//Копируем папку
             {
                 OpenDir(FileToCopy);
@@ -855,9 +887,14 @@ namespace KursOS
                 {
                     if (CanRead(currdir[i].name) == 1)
                     {
-                        Massivfiletext[i, 0] = currdir[i].name;
-                        OpenFile(currdir[i].name, ref CopyText);
-                        Massivfiletext[i, 1] = CopyText;
+                        if ((ilist[currdir[i].idinode].flags & 2) == 0)//Если внутри копируемой директории файл
+                        {
+                            Massivfiletext[i, 0] = currdir[i].name;
+                            OpenFile(currdir[i].name, ref CopyText);
+                            Massivfiletext[i, 1] = CopyText;
+                        }
+                        else//Если внутри копируемой директории еще директория
+                            CopyingDirName.Add(currdir[i].name);
                     }
                     else
                         return -2;
@@ -875,6 +912,13 @@ namespace KursOS
                 OpenFile(FileToCopy, ref CopyText);
                 OpenDir(PathToCopy);
                 AddFile(FileToCopy, CopyText);
+            }
+            OpenDir(Start);
+            for (int i = 0; i < CopyingDirName.Count; i++)//Копируем все директории что были в копируемой директории в скопированную директорию
+            {
+                OpenDir(FileToCopy);
+                CopyFile(CopyingDirName[i], PathToCopy + FileToCopy);
+                OpenDir(Start);
             }
             return 0;
         }
