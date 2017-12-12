@@ -512,6 +512,8 @@ namespace KursOS
 
         private int Append(string FileName, string text)
         {
+            if (text.Length == 0)
+                return 0;
             int targinode = -1;
             int targroot = -1;
             for (int i = 0; i < currdir.Count; i++)
@@ -524,7 +526,7 @@ namespace KursOS
                 }
             }
             if (targroot == -1)
-                return -1;//Файл не найден
+                return -5;//Файл не найден
             if (((ilist[targinode].perm & 4) == 0 && curruser == ilist[targinode].uid) || (curruser != ilist[targinode].uid && (ilist[targinode].perm & 1) == 0))
                 return -3; //Нет прав
             if ((ilist[targinode].flags & 2) == 2)
@@ -539,6 +541,52 @@ namespace KursOS
                 }
             }
             MassivByte = Encoding.Default.GetBytes(text);
+            if (lastlclust == -1)
+            {
+                int clustneed = 0;
+                int inodenum = targinode;
+                if (MassivByte.Length % Super.clustSz == 0)
+                    clustneed = MassivByte.Length / Super.clustSz;
+                else
+                    clustneed = MassivByte.Length / Super.clustSz + 1;
+
+                if (Super.freeClustCount >= clustneed && clustneed <= ilist[0].clst.Length)
+                {
+                    for (int i = 0; i < clustneed; i++)//связываем кластеры с массивом инода и отмечаем как занятые в bitmap
+                    {
+                        for (int j = 0; j < bitmap.Count; j++)
+                        {
+                            if (!bitmap[j])
+                            {
+                                ilist[inodenum].clst[i] = j;
+                                bitmap[j] = true;
+                                break;
+                            }
+                        }
+                    }
+                    Super.freeClustCount -= (ushort)clustneed;//Уменьшаем счетчик свободных кластеров
+                    int sym = 0, clustnum = 0;
+                    while (sym < MassivByte.Length) //Запись информации в кластер
+                    {
+                        clusters[ilist[inodenum].clst[clustnum], sym % Super.clustSz] = MassivByte[sym];
+                        sym++;
+                        if (sym % Super.clustSz == 0)
+                            clustnum++;
+                    }
+                    BinaryFormatter binform = new BinaryFormatter();
+                    FileStream stream = new FileStream("Dir\\" + currpath, FileMode.Create);
+                    binform.Serialize(stream, currdir);
+                    stream.Close();
+                    return 0; //Успешно
+                }
+                else
+                {
+                    if (Super.freeClustCount >= clustneed)  //Недостаточно памяти
+                        return -1;
+                    else   //Файл слишком большой
+                        return -2;
+                }
+            }
             int firstfreebyte = Super.clustSz;
             for (int i = 0; i < Super.clustSz; i++)
             {
@@ -783,7 +831,7 @@ namespace KursOS
             return 0;
         }
 
-        private void OpenFile(string FileName, ref string Stream)
+        private string OpenFile(string FileName, ref string Stream)
         {
             int targroot = -1;
             int targinode = -1;
@@ -816,6 +864,7 @@ namespace KursOS
                 }
             }
             Stream = Encoding.Default.GetString(MassivByte);
+            return Stream;
         }
 
         private int OpenFile(string FileName)
@@ -1050,6 +1099,7 @@ namespace KursOS
                         else if (err == -2) TBOut.Text += "Файл слишком большой\r\n";
                         else if (err == -3) TBOut.Text += "Не достаточно прав для записи в файл\r\n";
                         else if (err == -4) TBOut.Text += "Действие неприменимо к каталогу\r\n";
+                        else if (err == -5) TBOut.Text += "Файл не найден\r\n";
                         else TBOut.Text += "Файл успешно изменён\r\n";
                     }
                     else
