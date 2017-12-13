@@ -1085,6 +1085,7 @@ namespace KursOS
                         "chmod <file> <perm> - изменить права доступа к файлу file на perm\r\n" +
                         "pwd - узнать адрес текущей директории\r\n" +
                         "ls - вывести список файлов в текущей директрии\r\n" +
+                        "cls - очистить окно вывода\r\n" +
                         "push - сохранить текущее состояние ФС в физ. память\r\n" +
                         "pull - загрузить состояние ФС, сохранённое в физ. памяти\r\n";
                     return true;
@@ -1234,6 +1235,9 @@ namespace KursOS
                     break;
                 case "pull":
                     Loading();
+                    break;
+                case "cls":
+                    TBOut.ResetText();
                     break;
                 default:
                     return false;
