@@ -774,11 +774,15 @@ namespace KursOS
                 }
             }
             if (ilist[targinode].uid == curruser)
+            {
                 if ((ilist[targinode].perm & 8) == 8)
                     return 1;//Есть права
+            }
             else
+            {
                 if ((ilist[targinode].perm & 2) == 2)
                     return 1;//Есть право
+            }
             return -1;//Нет прав
         }
 
