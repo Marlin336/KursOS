@@ -1025,7 +1025,7 @@ namespace KursOS
 
         private void DisplayFileList()
         {
-            TBOut.Text += "Имя\tПрава\tДата создания/Изменения\t\tРазмер\tДир-я\tID создателя\r\n";
+            TBOut.Text += "Имя\tПрава\tДата создания/Дата изменения\tРазмер\tДир-я\tID создателя\r\n";
             foreach (Filesystem.Root root in currdir)
             {
                 TBOut.Text += root.name + "\t";
