@@ -107,7 +107,7 @@ namespace KursOS
                         break;
                 } while (TBIn.Text.Length != 0);
                 TBOut.Text += comand[0] + " " + comand[1];
-                if (comand[0] != "addusr")
+                if (comand[0] != "nusr")
                     TBOut.Text += " " + comand[2] + "\r\n";
                 else
                     TBOut.Text += "\r\n";
@@ -134,6 +134,11 @@ namespace KursOS
 
         private void AddUser(string Login, string Password, bool ChngFile)
         {
+            if (Password.Length < 4)
+            {
+                TBOut.Text += "Пароль должен содержать минимум 4 символа\r\n";
+                return;
+            }
             bool exept = false;
             foreach (Users user in UsList)
             {
@@ -1083,7 +1088,7 @@ namespace KursOS
                         "push - сохранить текущее состояние ФС в физ. память\r\n" +
                         "pull - загрузить состояние ФС, сохранённое в физ. памяти\r\n";
                     return true;
-                case "addusr":
+                case "nusr":
                     if (comand[1] != null && comand[2] != null)
                         AddUser(comand[1], comand[2], true);
                     else
