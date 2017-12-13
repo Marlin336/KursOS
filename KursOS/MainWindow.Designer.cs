@@ -40,7 +40,7 @@
             this.BEnter.Name = "BEnter";
             this.BEnter.Size = new System.Drawing.Size(82, 29);
             this.BEnter.TabIndex = 1;
-            this.BEnter.Text = "BEnter";
+            this.BEnter.Text = "Ввод";
             this.BEnter.UseVisualStyleBackColor = true;
             this.BEnter.Click += new System.EventHandler(this.BEnter_Click);
             // 

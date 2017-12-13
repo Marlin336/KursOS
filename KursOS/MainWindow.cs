@@ -750,11 +750,15 @@ namespace KursOS
                 }
             }
             if (ilist[targinode].uid == curruser)
+            {
                 if ((ilist[targinode].perm & 4) == 4)
                     return 1;//Есть права
+            }
             else
+            {
                 if ((ilist[targinode].perm & 1) == 1)
                     return 1;//Есть право
+            }
             return -1;//Нет прав
         }
 
@@ -1061,15 +1065,19 @@ namespace KursOS
                     TBOut.Text += "nusr <name> <pass> - создание пользователя с именем name и паролем pass\r\n"+
                         "rmusr <name> <pass> - удалить пользователя с именем name и паролем pass\r\n"+
                         "lsusr - вывести список существующих пользователей\r\n"+
-                        "cp <stpath> <finpath> - копировать файл stpath в место finpath\r\n"+
+                        "cp <file> <path> - копировать файл file в директорию path\r\n"+
                         "rnm <old_name> <new_name> - переименовать файл old_name в new_name\r\n"+
-                        "crtfl <file> <text> - создать файл с именем file и содержимым text\r\n"+
-                        "crtdir <name> - создать папку с именем name\r\n" +
-                        "rm <file> - удалить файл file\r\n" +
+                        "crtfl <file>( <text>) - создать файл с именем file( и содержимым text)\r\n"+
+                        "crtdir <name> - создать директорию с именем name\r\n" +
+                        "append <file> <text> - добавить text в конец файла file\r\n" +
+                        "cd <path> - перейти по директориям path\r\n" +
+                        "rm <file> - удалить файл/директорию file\r\n" +
                         "cat <file> - показать содержимое файла file\r\n" +
                         "chmod <file> <perm> - изменить права доступа к файлу file на perm\r\n" +
                         "pwd - узнать адрес текущей директории\r\n" +
-                        "ls - вывести список файлов в текущей директрии\r\n";
+                        "ls - вывести список файлов в текущей директрии\r\n" +
+                        "push - сохранить текущее состояние ФС в физ. память\r\n" +
+                        "pull - загрузить состояние ФС, сохранённое в физ. памяти\r\n";
                     return true;
                 case "addusr":
                     if (comand[1] != null && comand[2] != null)
@@ -1210,7 +1218,10 @@ namespace KursOS
                     DisplayFileList();
                     break;
                 case "push":
+                    string Path = GetCurrPath();
+                    OpenDir("ROOT");
                     Formating();
+                    OpenDir(Path);
                     break;
                 case "pull":
                     Loading();
