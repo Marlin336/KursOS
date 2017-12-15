@@ -165,6 +165,8 @@ namespace KursOS
 
         private int DelUser(string UserName, string Pass)
         {
+            if (UsList.Count == 1)
+                return -2;//Нельзя удалить единственного пользователя
             bool exflag = false;
             foreach (Users user in UsList)
             {
@@ -1102,6 +1104,7 @@ namespace KursOS
                         if (err == -1) TBOut.Text += "Неверный логин\r\n";
                         else if (err == 0) TBOut.Text += "Неверный пароль\r\n";
                         else if (err == 1) TBOut.Text += "Пользователь удален\r\n";
+                        else if (err == -2) TBOut.Text += "Нельзя удалить последнего пользователя\r\n";
                     }
                     else
                         TBOut.Text += "Введены не все параметры\r\n";
